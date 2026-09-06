@@ -1,0 +1,31 @@
+# Skill names this pack used to have, one per line.
+#
+# Two things read this, which is why it is a file rather than a list inside one
+# of them:
+#
+#   check.sh    rule 5 - a retired name written as plain prose in a skill looks
+#               exactly like ordinary text, and this is what makes it catchable.
+#   install.sh  removes these from a project on upgrade. A project installed
+#               long ago carries its old skills forever otherwise - one had 42
+#               installed, 16 of them from a predecessor pack, all visible to
+#               the agent and contradicting the current workflow.
+#
+# **Add a name here whenever a skill is renamed or removed.** Skipping that step
+# is what leaves the gap; the rules themselves are not the gap.
+#
+# Only names this pack itself has used. Anything else in a project's skills
+# directory is the user's own and is never removed - install.sh reports it.
+release
+feature
+implement
+complete
+audit
+overview
+techstack
+onboard
+adopt
+brief
+try
+doctor
+status
+idea

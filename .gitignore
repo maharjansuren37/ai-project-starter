@@ -1,0 +1,12 @@
+# Nothing is built or installed here - the pack has no dependencies.
+# These are only guards against local noise.
+.DS_Store
+*.log
+build-output/
+
+# The pack's own build notes stay local. This repo is the starter itself, and
+# these are a working diary of building it: a chronological record naming real
+# projects, live hosts and a domain. `dev-notes/decisions.md` is tracked - it
+# explains why the pack is shaped this way and names nothing personal.
+dev-notes/status.md
+dev-notes/coverage.md
