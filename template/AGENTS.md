@@ -28,10 +28,10 @@ These are already loaded, before you read anything else:
 |---|---|---|
 | `blueprint/context/design.md` | the visual decisions, if this project has a UI | `prototype` |
 | `blueprint/context/quality-bar.md` | the performance, scale, security and availability this project holds itself to | `architect`, `setup` |
-| `blueprint/project-plan.md` | the what and why | `ideate`, `stack`, `architect` |
+| `blueprint/project-plan.md` | the what and why | `ideate`, `stack`, `architect`, `layout` |
 | `blueprint/build-plan.md` | the checklist | `ideate`, `spec`, `ship` |
 | `blueprint/history/` | every completed item, archived | `ship` |
-| `dev-notes/decisions.md` | why this project is shaped the way it is | `docs`, `architect`, `scaffold` |
+| `dev-notes/decisions.md` | why this project is shaped the way it is | `docs`, `architect`, `layout`, `scaffold` |
 | `dev-notes/status.md` | where things stand, what is open | `docs`, `deploy`, `monitor` |
 | `CHANGELOG.md` | what changed, for people who use it | `docs` |
 
@@ -64,11 +64,14 @@ fails `preflight`.
 
 ## What this is
 
-<!-- Replace this with a description of your project and the problem it solves. -->
+<!-- `context` fills this in from the plans, in two or three sentences, and
+     leaves it alone once there is prose here. Write it yourself if you would
+     rather - it is your file. Every other placeholder in this file names the
+     skill that fills it; this one did not, and for a long time nothing did. -->
 
 ## The loop
 
-    ideate -> stack -> architect -> scaffold -> ci -> context (plan it)
+    ideate -> architect -> stack -> layout -> scaffold -> ci -> context (plan it)
          -> spec -> build -> verify -> review -> ship      (build it)
          -> preflight -> host -> deploy -> monitor         (run it)
 
@@ -81,6 +84,27 @@ as available:
 - `rollback` - reverse a completed feature
 - `docs` - README, API docs, and `dev-notes/`
 - `autopilot` - one bounded, unattended build pass; explicit opt-in only
+
+**Changing a decision already made** is its own situation, and the skill that
+made it is where you go:
+
+- `ideate --rescope` - change what the project is for. Plain `ideate` **stops**
+  when the plan is already filled, because proposing a fresh build plan and
+  having it approved erases the `- [x]` marks that are the whole resume
+  mechanism. The rescope mode carries finished items and their history across,
+  and sends a cut item that already shipped to `rollback` - deleting the plan
+  line does not delete the code.
+- `architect` - re-deciding the parts after `scaffold` has run **moves every
+  file**; it says so before proposing anything.
+- `layout` - re-deciding directory names after `scaffold` has run means editing
+  what the scaffolder generated: every config file points at paths. It says what
+  that costs before proposing anything. **Which of `architect` and `layout` you
+  want depends on the question** - how many things deploy is `architect`'s, what
+  the directories are called is `layout`'s.
+- `prototype` - a second run can leave `design.md` describing a look the code
+  does not have, and `review` then measures against a bar nobody built to.
+- `stack` - there is no skill that changes a stack once there is code, and that
+  is deliberate: it is a rewrite. `stack` names the order to do it in.
 
 Each step is a skill: a plain markdown worksheet any capable agent can follow,
 and any person can work through by hand. Cross-references use plain names, so

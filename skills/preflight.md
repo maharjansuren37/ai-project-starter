@@ -164,6 +164,22 @@ they ask *does it work*. Both are real audits; say which you ran.
   they work together**, and going live is the worst moment to find that out. A
   multi-part project with no integration run is a **blocker**, not a risk.
 - the main flows verified against a production-like build, not the dev server
+- **every shipped feature still does what it was proved to do.** `verify` runs
+  once per item, against the spec in flight, and the done-whens it proved are
+  archived under `blueprint/history/` and **never read again**. So a project can
+  reach here with every item marked done and item 2 quietly broken by item 6,
+  with nothing in the workflow having looked. `verify --all` re-proves the
+  archive; **the automated suite is an acceptable answer only where it genuinely
+  covers those claims**, and the ones it does not cover are usually the ones
+  `verify` existed to check - a screen rendering correctly, a flow working end to
+  end, anything whose evidence was a screenshot. Ask which claims the suite
+  actually asserts rather than assuming it asserts them all.
+
+  Not run, and not covered by tests, is **could not verify** - which is never a
+  pass. This is the check most likely to be waved through on a project where
+  everything looks green, because everything *is* green: the tests pass and the
+  plan is all ticked. Neither of those has re-observed anything since the day it
+  shipped.
 - **the artifact that will run is the artifact that was checked.** Ask where the
   build happens - CI, the platform, or nowhere - and **if the answer is "on the
   target", that is a blocker, not a preference.** Everything this audit and every

@@ -31,11 +31,19 @@ database, testing, **monitoring and where its alerts go**, hosting. Include the
 platform: web app, content website, PWA, mobile app, command-line tool, library,
 or a service with no UI.
 
+**This is filled in after section 6, not before it.** A technology is chosen
+against a structure and a quality bar; chosen first, it decides them instead.
+
 ## 6. Architecture - how is it structured?
 
-Filled in by the `architect` skill, or by you. Routes or screens, the data model
-in enough detail to write a schema from, where logic lives, the auth boundary,
-and any third-party service a feature actually needs.
+Filled in by the `architect` skill, or by you, **before section 5**. How many
+deployable parts there are and why, routes or screens, the data model in enough
+detail to write a schema from, where logic lives, the auth boundary, and any
+third-party service a feature actually needs.
+
+`layout` adds the directory tree here once the framework is known - where the
+files physically sit is a framework convention, not an architectural decision,
+and it is recorded beneath the part count it implements.
 
 ## 7. UI/UX - how should it look and feel?
 
@@ -50,9 +58,10 @@ useful answer and an empty section is not.
 Target host if known. App type, build and start commands, env vars by name,
 database or storage needs, health check path, domain notes.
 
-Started by the `stack` skill from what it already asked, extended by `architect`
-with anything the structure implies, and corrected by `scaffold` to the commands
-that actually landed. **`host`, `deploy` and `preflight` all read this section**,
+Started by `architect` with what the structure implies - how many things deploy,
+and what each one needs - filled in by `stack` with the concrete host, build and
+start commands, and corrected by `scaffold` to the commands that actually
+landed. **`host`, `deploy` and `preflight` all read this section**,
 so a blank line here is a question asked at the most expensive possible moment.
 
 **"Runs from source, not published anywhere" is a complete answer** - and it is

@@ -7,22 +7,32 @@ description: "Turn an approved stack and the problem, users, and features alread
 
 Where this sits:
 
-    `stack` -> architect -> `scaffold` -> `ci` -> `context` -> `spec`
+    `ideate` -> architect -> `stack` -> `layout` -> `scaffold` -> `ci` -> `context`
 
 Run this once the stack is settled and `blueprint/project-plan.md`'s problem, users,
 and features have real content - **and before `scaffold` installs anything.**
 
 **That order matters and it used to be the other way round.** `scaffold` builds
-into a layout: one application, or two parts in their own directories. This skill
-is what decides which. Scaffolding first means installing into a layout nobody
-has chosen yet, and then either living with the guess or moving a fully installed
-project afterwards.
+into a shape: one application, or two parts that deploy separately. This skill is
+what decides how many there are and why. Scaffolding first means installing into
+a shape nobody has chosen yet, and then either living with the guess or moving a
+fully installed project afterwards.
 
-Skipping it is fine for a small enough project; `context` will generate
-from whatever the plan already says, and `scaffold` will assume one application,
-which is the right default. The point of running it is to make the
-structural decisions deliberately rather than discovering them halfway through
-the third feature.
+**This is not optional, and it used to be.** Under the old order it could be
+skipped and `scaffold` would assume one application. It cannot be skipped now:
+`stack` and `layout` both stop on a placeholder Architecture section, because a
+technology chosen against nothing is precisely what running this skill first
+exists to prevent.
+
+**But it is short for a small project, and short is the correct outcome - not a
+sign it went wrong.** For most things that is: six no's to the questions in Step
+2, one line saying so, one application, a data model, and a four-line quality bar
+that says "tens of users, down until I notice". Step 3 says "system design does
+not apply" and stops. **That is a complete run**, and it takes minutes.
+
+What is being prevented is not a missing document. It is discovering the
+structural decision halfway through the third feature, when the answer is a
+rewrite rather than a choice.
 
 
 > **In a multi-part project**, two files live at the **product root**, not in
@@ -34,13 +44,45 @@ the third feature.
 
 ## Before you start
 
-If `blueprint/project-plan.md` does not exist, or its problem and features sections are
-still placeholder text, **stop and say so**. This skill designs structure for a
-defined idea; it does not invent the idea.
+If `blueprint/project-plan.md` does not exist, or its problem and features
+sections are still placeholder text, **stop and say to run `ideate` first.** This
+skill designs structure for a defined idea; it does not invent the idea, and a
+structure designed for a problem nobody has stated is shaped by whatever the
+designer already had in mind.
 
-**If the Tech section is still empty, stop and say to run `stack` first.** Code
-layout and the data model are decided against a known language and framework;
-deciding them first means deciding them twice.
+**This runs before `stack`, and that is deliberate.** Architecture is the design
+of the system; technology is how it gets implemented. Choosing the technology
+first means the architecture is whatever that technology makes easy, and the
+questions that should have ruled it in or out get asked afterwards, when the
+answer is a rewrite rather than a choice.
+
+**So the Tech section will be empty, and that is correct.** Do not stop for it,
+and do not guess at it - `stack` fills it in next, against what this skill
+decides.
+
+**One thing genuinely does depend on the technology, and it is not architecture:
+where files physically sit.** A "flat" layout is right in one ecosystem and
+breaks in another - a .NET `.csproj` globs everything beneath it. **That belongs
+to `layout`**, which runs after `stack` and knows the framework's own
+conventions. This skill decides **how many deployable parts there are and why**;
+`layout` decides what the directories are called and where config lives.
+
+Say that split out loud when it comes up, because the two look like one question
+and are not: *"two parts because they deploy separately"* is architecture,
+*"`web/` and `api/` with a workspace root"* is a framework convention.
+
+**If the Architecture section is already filled and code exists in that layout,
+say what changing it costs before proposing anything.** This skill proposes and
+stops, so nothing moves without approval - but approval given without the cost
+stated is not informed. **Re-deciding the parts after `scaffold` has run moves
+every file**, and if the change is one application becoming several it is a
+conversion of the whole repository: a board and status files appear, and each
+part is scaffolded separately afterwards. `convert-to-parts.sh` performs that
+split; do not hand-move the tree. Git makes it recoverable, not cheap.
+
+Small additions are not this. Adding a route, a screen or a table to a settled
+architecture is ordinary work - say the cost only when the *shape* changes. A
+change to the directory names alone is `layout`'s, not this skill's.
 
 ## Input
 
@@ -55,7 +97,38 @@ That is the brief. Do not re-ask questions it already answers.
 
 ## Step 2 - size the design to the project
 
-Before designing anything, judge the real complexity from the feature list.
+**Answer these six first.** They decide the shape of the system, and `stack`
+reads them next to rule technologies in and out - "work outside a request" makes
+a job runner a requirement rather than a preference, before anyone is attached to
+a framework that has none.
+
+- more than one **deployable service**?
+- work that must happen **outside a request**?
+- data that must stay **consistent across more than one write**?
+  <!-- Say what this answer does and does not settle. It is a *transaction*
+       requirement, and every relational database provides transactions,
+       single-file ones included - so on its own it rules out no storage engine.
+       What bears on that is concurrent writers, which is the load question
+       below. This skill overstated it for a day, saying a yes here ruled a
+       whole class of storage engine out. It does not, and a rule stated too
+       strongly gets a stack rejected for a reason that is not true. -->
+- a **dependency whose failure is not acceptable**?
+- **real load, or a hard latency target**?
+- an **external API that is rate-limited or unreliable**?
+
+**On the third question, be precise about what a yes settles.** It is a
+*transaction* requirement, and every relational database provides transactions -
+single-file ones included. **On its own it rules out no storage engine.** What
+bears on that is **concurrent writers**, which is the fifth question. Say both
+answers to `stack` rather than the third alone, or it will reject an option for a
+reason that is not true.
+
+**Six no's is the common answer and a complete one.** Say so in a line, record it
+in the plan's Constraints, and design the small thing the answers license. It is
+also the answer that licenses the simplest technology, which is why `stack`
+needs it before it recommends rather than after.
+
+Then judge the real complexity from the feature list.
 **A handful of CRUD screens is not a system that needs service boundaries, a
 message queue, or a diagram with more than six boxes.** Match the depth of the
 design to what is actually being built.
@@ -65,18 +138,30 @@ rather than staying silent or inventing scope to fill a heading.
 
 Design only what the project needs, from:
 
-- **Code layout** - **decide this first, because everything else sits inside it.**
+- **How many deployable parts** - and why. **This is an architectural decision,
+  not a directory choice**: parts exist because they deploy separately, scale
+  separately, or are owned separately. **Not because two languages were chosen** -
+  that reasoning runs backwards, and it is what picking the technology first
+  produces. `layout` decides what the directories are called, using the
+  framework's own conventions, once `stack` has chosen one.
+
   Three shapes, and they are not equally likely:
   - *One application* - a single source root, usually `src/`. **This is the
     default and most projects should take it**, including anything with server
     routes inside the same framework. Splitting is easy to do and expensive to
     undo.
-  - *Two parts in one repository* - a front end and a separate backend, often
-    because they are different languages. Say where each lives (`web/` and
-    `api/`, or `apps/web` and `apps/api`), **how they share types across the
+  - *Two parts in one repository* - a front end and a separate backend, because
+    they deploy or scale separately. (They often also end up in different
+    languages, but that is a consequence of the split, not a reason for it.)
+    **Name each part and say what it is for**, **how they share types across the
     boundary**, how both run together in development, and whether they deploy
     together or apart. That last question is the one people forget and then
     discover at deploy time.
+
+    **Name them; do not place them.** Whether that is `web/` and `api/` or
+    `apps/web` and `apps/api` is a framework convention and belongs to `layout`,
+    which runs after `stack`. `convert-to-parts.sh` below takes the names, and a
+    name is all it needs.
   - *Separate repositories* - only when the parts genuinely release on
     independent cycles or different people own them. For a solo project this is
     almost always wrong: it doubles the tooling and makes a change spanning both
@@ -111,7 +196,7 @@ Design only what the project needs, from:
   do not exist yet.
 
   **This is cheap here and expensive later**, which is the reason this skill runs
-  before `scaffold`. Right now the project is planning files and nothing else, so
+  before `stack` and `scaffold`. Right now the project is planning files and nothing else, so
   the conversion moves a handful of markdown. After scaffolding it moves an
   installed framework, its lockfile and its dependency directory - and then each
   part still has to be scaffolded separately anyway. Convert first, scaffold
@@ -275,11 +360,15 @@ resolving no argument. If a number cannot be justified, write "not measured, no
 target" - `preflight` treats that as a knowingly-accepted risk, which is a real
 outcome, rather than pretending a target exists.
 
-**Then check the stack against it.** `stack` asked what this has to stand up to
-before recommending, so usually the answer holds and one line saying so is enough.
-**When it does not - the bar needs something the chosen stack cannot give - say so
-and route back to `stack`.** That is a technology decision surfacing one step
-late, and it is far cheaper here than after `scaffold` has installed it.
+**This bar is written before any technology exists, and that is the point.**
+`stack` runs next and reads it: the bar is what rules options in and out, so it
+has to be a number on the page before anyone is attached to a framework. A bar
+written afterwards only ever ratifies the choice already made.
+
+**Write it as what the project requires, never as what something can do.** "Under
+300ms at p95, measured server-side" is a requirement. "Fast enough for SQLite"
+is a technology decision wearing a bar's clothes, and it forecloses the next
+step's job.
 
 Re-run this step whenever the answer changes. `setup` writes this file for a
 project that already existed, by measuring what is true rather than choosing it.
@@ -298,11 +387,24 @@ Write only the approved text, only into the Architecture section. Leave the
 problem, users, features, UI/UX, and deployment sections alone - those are the
 user's own planning pass.
 
-**Add to the Deployment section anything the structure just decided.** `stack`
-started it; the consequences of *this* skill's choices belong there too - storage
-a feature needs, a health check path if something serves requests, and for a
-multi-part project, whether the parts deploy together or separately. **That last
-one is the question people discover at deploy time**, and it is settled here.
+**Everything from Steps 2 and 3 goes *inside* section 6, under `###`
+sub-headings.** The plan's sections are numbered and other skills address them by
+number - `context` checks "6. Architecture" and "5. Tech" by heading. **A `##`
+heading written between two numbered sections silently changes where section 6
+ends**, so a reader or a skill taking "the Architecture section" gets the wrong
+span. Step 3's system design is the block most likely to be written this way,
+because it is long enough to feel like a section of its own. It is not.
+
+**Start the Deployment section with what the structure just decided.** This skill
+runs before `stack`, so the section is usually empty and this is what opens it -
+how many things deploy, storage a feature needs, a health check path if something
+serves requests, and for a multi-part project, whether the parts deploy together
+or separately. **That last one is the question people discover at deploy time**,
+and it is settled here.
+
+**Do not name a host, a build command or a start command.** Those need the
+framework and are `stack`'s to add next; a placeholder written here is a guess
+that reads like a decision to `host`.
 
 Write `blueprint/context/quality-bar.md` from Step 4 at the same time, and say in
 your report that you did - it has readers in `spec`, `verify`, `review` and
@@ -325,9 +427,14 @@ real alternative and a real why, add a numbered entry to `dev-notes/decisions.md
 saying what was chosen, what lost, and what it costs. A trade-off buried in a
 plan section is one nobody will read.
 
-Then say what is next. **`scaffold` comes next in every case** - it acts on the
-code layout just decided, and installing a framework into a layout that is about
-to move is the expensive way round. `context` follows it.
+Then say what is next. **`stack` comes next in every case.** It chooses the
+technology against what this skill just decided - the shape questions, the part
+count and the quality bar - which is the whole reason this runs first. Hand it
+those answers explicitly rather than leaving it to re-read them.
+
+`layout` follows `stack`, and turns the part count into real directory names
+using the framework's conventions; `scaffold` then installs into them, and `ci`
+and `context` follow that.
 
 Then **branch on whether this project has a UI worth settling before the build
 loop starts**:

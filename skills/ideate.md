@@ -1,18 +1,22 @@
 ---
 name: ideate
-description: "Turn a rough idea into a filled-in project plan by interviewing about what you are building, who it is for, and what the first version must do - then writing `blueprint/project-plan.md` and a starting build-plan.md checklist. Pushes back on scope that is too big for a first version, and names what is deliberately not being built. Use when the user runs `ideate`, is starting something new and has only a rough notion of it, or asks how to plan a project."
+description: "Turn a rough idea into a filled-in project plan by interviewing about what you are building, who it is for, and what the first version must do - then writing `blueprint/project-plan.md` and a starting build-plan.md checklist. Pushes back on scope that is too big for a first version, and names what is deliberately not being built. With --rescope, changes the scope of a project that has already built things, carrying completed items and their history across rather than overwriting the plan. Use when the user runs `ideate`, is starting something new and has only a rough notion of it, asks how to plan a project, or needs to change what an existing project is for."
 ---
 
 # ideate - turn a rough notion into a plan you can build from
 
 Where this sits:
 
-    ideate -> stack -> architect -> scaffold -> `ci` -> context -> spec
+    ideate -> `architect` -> `stack` -> `layout` -> `scaffold` -> `ci` -> `context`
 
-This is the very start. It runs in a project that has the workflow but no code,
-no stack, and empty planning docs. **It decides what to build; `stack` decides
-what to build it with.** Keep those separate - choosing a framework before the
-problem is clear is how projects end up shaped by their tools.
+This is the very start. It normally runs in a project that has the workflow but
+no code, no stack, and empty planning docs. **It decides what to build; `stack`
+decides what to build it with.** Keep those separate - choosing a framework
+before the problem is clear is how projects end up shaped by their tools.
+
+It also runs when a project that already exists needs to become something else -
+see *Rescoping* below, which is the same interview against a plan that is not
+empty.
 
 
 > **In a multi-part project**, two files live at the **product root**, not in
@@ -21,6 +25,30 @@ problem is clear is how projects end up shaped by their tools.
 > `architect` runs at the root and writes one there, not one per part).
 > `AGENTS.md` records `Product root:` - read it from there rather than assuming
 > a path. Everything else named here is this part's own.
+
+## Before you start
+
+**If `blueprint/project-plan.md` still holds the seeded instruction text**, this
+is a fresh project: run the interview below and write both plans.
+
+**If it is already filled in, stop and report what exists** before proposing
+anything - how many build-plan items are checked, whether `blueprint/history/`
+holds archived work, and whether `current-work.md` has an item in flight. Then
+name `ideate --rescope` and wait for the user to ask for it.
+
+**Never rewrite a filled plan without that argument.** The default path proposes
+a whole new build plan, and someone approving one in good faith erases the
+`- [x]` marks that are the entire resume mechanism: `build` continues from the
+first unchecked step, so a rewritten plan makes every finished item look unbuilt.
+The plan is cheap to regenerate. **The record of what was actually built is not.**
+
+## Input
+
+| Argument | When | What it does |
+|---|---|---|
+| *(none)*, plan still seeded | a new project | the interview below; writes both plans |
+| *(none)*, plan already filled | arrived here by habit | **stops** and reports what exists |
+| `--rescope` | the project is now for something else | the interview, reconciled against what is already built |
 
 ## Step 1 - understand the idea
 
@@ -109,12 +137,52 @@ reads them.
 
 ## Step 4 - write, and hand off
 
-Write the approved content. Then say what comes next: `stack` to choose the
-technology, and after that `scaffold` to build the project.
+Write the approved content. Then say what comes next: `architect` to establish
+the shape and the quality bar, then `stack` to choose the technology against
+them, then `layout` and `scaffold` to build the project.
+
+**Say why that order, because it surprises people:** the architecture is what a
+technology gets evaluated against, so choosing the technology first makes the
+architecture whatever that technology happens to make easy.
 
 If anything was genuinely undecidable - a real fork the user needs to think
 about - write it down as an open question in the plan rather than picking for
 them.
+
+## Rescoping a project that has already built things
+
+`ideate --rescope`. The interview above still applies - the problem, the users,
+the first version - but the output is **a change to a plan, not a new one**, and
+three things have to survive it.
+
+**Completed items keep their checkbox and their history.** A `- [x]` item has an
+archive under `blueprint/history/` and a commit behind it. Carry the line across
+unchanged even when the item is no longer central to the product: deleting it
+does not un-build the code, it only removes the record that the code exists.
+
+**Work in flight is finished or abandoned explicitly, never silently dropped.**
+If `blueprint/context/current-work.md` holds an item, say so and ask which.
+Finishing it through `ship` first is usually cheaper than unpicking a half-built
+item afterwards.
+
+**Every item leaving the plan is named, and shipped ones are somebody's problem.**
+Say whether each one shipped. An unchecked item can simply go. **A checked one
+left code behind, and removing that is `rollback`'s question, not this skill's** -
+route to it rather than editing the plan to pretend the feature never existed.
+A plan that disagrees with the code is worse than a plan that admits it.
+
+Then:
+
+- **Record it in `dev-notes/decisions.md` as superseding the original scope.**
+  Numbers are permanent and a superseded entry is marked, never deleted - what a
+  project stopped being explains as much as what it is.
+- **Hand off to `setup` and `context`, not `stack` and `scaffold`.** There is
+  code here already: `stack` refuses a project that has any, and `scaffold`
+  installs a decision made long ago. `setup` re-reads what the repo actually is;
+  `context` regenerates the overview from the changed plan.
+- **If the stack itself no longer fits the new scope, say so and stop.** That is
+  a rewrite rather than a rescope, and it is the user's call to make deliberately
+  rather than something to discover halfway through.
 
 ## Rules
 

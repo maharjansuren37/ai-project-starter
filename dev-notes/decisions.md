@@ -84,3 +84,36 @@ against exactly what is recorded and names the source on each finding.** A
 personal tool and a payment system need different bars, and imposing the stricter
 one produces noise that trains people to ignore findings. Recording none is a
 legitimate answer.
+
+## D8 - Architecture before technology, and layout after both (2026-09-08)
+
+The loop ran `ideate -> stack -> architect -> scaffold` for its whole life. The
+justification was real: `architect`'s first decision was code layout, and a
+layout turns on the language - React + Express shares a workspace, React +
+ASP.NET shares nothing. So `stack` had to come first.
+
+**That justification was about the wrong decision.** Code layout is a framework
+convention, not architecture. The architectural questions - how many things
+deploy, is there work outside a request, must data be consistent across more than
+one write, whose failure is unacceptable - are the ones a technology should be
+chosen *against*, and asking them second meant asking them once the answer was a
+rewrite rather than a choice. Every real project built with this pack got a
+single-file database because the stack question came first and nothing had yet
+asked whether that was safe.
+
+**Chose: split the two decisions and put them either side of `stack`.**
+`architect` runs second and asks six shape questions and writes the quality bar
+as numbers, before any technology exists to bias them. `stack` runs third and
+reads both as inputs, saying which line of the bar each choice answers and
+stopping if nothing in reach meets it. **`layout` is a new skill, the 27th**, and
+runs fourth: it decides directory names in the framework's own terms, which is
+knowable only once the framework is known and expensive once `scaffold` has
+installed into it.
+
+The rejected alternative was folding layout into `scaffold`. It fails on
+approval: `scaffold` runs a long list of install commands, and a layout decided
+inside it is one nobody was asked about before a lockfile existed.
+
+This moved nine documented claims that were individually true and collectively a
+loop that no longer exists. `tests/test-seams.sh` now asserts no file attributes
+the directory layout to `architect`, and pins the handoff pairs to the new order.

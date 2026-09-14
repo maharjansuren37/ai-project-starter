@@ -16,6 +16,18 @@ ROOT="${1:?seed-product-root.sh needs a product root}"
 shift
 PARTS=("$@")
 
+# Parts may be given as paths - `apps/web-app` is what every JavaScript
+# workspace looks like. The AGENTS.md listing shows the PATH, because that is
+# what a reader needs to find the directory; the board and the status files are
+# flat, so they are keyed on the LAST SEGMENT.
+#
+# Both scripts must agree on this and they did not: this one listed bare names
+# while seed-part.sh listed paths, so adopting a five-part product produced a
+# root describing eight, three of which were directories that did not exist.
+# Every file was individually valid.
+# Nothing here is keyed on the flat name: the board's per-part entries are
+# appended by seed-part.sh, which derives the last segment itself.
+
 copy_if_absent() { [ -e "$2" ] || cp "$1" "$2"; }
 
 mkdir -p "$ROOT/blueprint/context" "$ROOT/blueprint/status" "$ROOT/contracts" "$ROOT/dev-notes"

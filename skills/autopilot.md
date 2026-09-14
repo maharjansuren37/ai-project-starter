@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: "Explicit opt-in only. Runs a named range of the workflow unattended - `autopilot stack..review` carries a planned idea to reviewed code, `autopilot spec..review` is one bounded pass on the current spec. Stops at the first question the plan does not answer, checkpoints every passing step, and ends with a review packet. Permanently blocked from anything git cannot undo: provisioning, production deploys, migrating real data, third-party accounts, and pushing. Use only when the user explicitly runs `autopilot`."
+description: "Explicit opt-in only. Runs a named range of the workflow unattended - `autopilot architect..review` carries a planned idea to reviewed code, `autopilot spec..review` is one bounded pass on the current spec. Stops at the first question the plan does not answer, checkpoints every passing step, and ends with a review packet. Permanently blocked from anything git cannot undo: provisioning, production deploys, migrating real data, third-party accounts, and pushing. Use only when the user explicitly runs `autopilot`."
 ---
 
 # autopilot - one bounded pass, then stop
@@ -40,20 +40,46 @@ another skill's handoff, or because a range looked convenient, is not opt-in.
 
     autopilot <from>..<to>
 
-Named skills, inclusive. `autopilot stack..review` takes an idea that is already
-written into the plan and carries it to reviewed code. With no range, it runs
+Named skills, inclusive. `autopilot architect..review` takes an idea that is
+already written into the plan and carries it to reviewed code.
+
+**That range used to be `stack..review`, and the loop reordering changed what it
+covers.** `architect` now runs before `stack`, so `stack..review` starts *after*
+the system has been shaped - it no longer carries an idea from the plan, it
+carries an already-designed system to code. Both are legitimate ranges; they are
+not the same one. **Say which end a range starts at and what that assumes**,
+because a range is a string that keeps working after its meaning has changed. With no range, it runs
 `spec..review` on the current spec - the original bounded pass.
 
 **A range resolves against the workflow's order**, which is:
 
-    stack -> architect -> scaffold -> ci -> context -> prototype -> spec
+    architect -> stack -> layout -> scaffold -> ci -> context -> prototype -> spec
           -> build -> verify -> review -> ship
 
-So `stack..context` runs four skills, and `architect` comes **before** `scaffold`
-because it decides the layout `scaffold` installs into.
+So `stack..context` runs five skills, and `architect` comes **before** `stack`
+because a technology is chosen against a shape, not the other way round.
 
-**Where the range may start:** `stack`, `architect`, `scaffold`, `context`,
-`prototype`, or `spec`.
+**Where the range may start:** `architect`, `stack`, `layout`, `scaffold`,
+`context`, `prototype`, `spec`, or **`build`**.
+
+**`build` is a legal start, and it is the one people actually reach for.** It is
+what a half-built item needs: `spec` has run, some steps are ticked, and the
+remaining ones are mechanical enough not to want a stop each. **Resume from the
+first unchecked step** in `blueprint/context/current-work.md` - never restart the
+item, and never re-do a ticked step.
+
+**Without this, the choice was one-way and nothing said so.** `spec..review`
+cannot pick up a half-built item either, because `spec` stops when
+`current-work.md` holds an unfinished spec - correctly, since overwriting it
+destroys the ticked steps. So a user who started building by hand was locked into
+finishing that way, having never been told the decision was irreversible.
+
+**Two things are required to start here** rather than at `spec`:
+
+- **`current-work.md` holds a real spec**, not the stub. There is nothing to
+  build from otherwise, and this skill does not write one.
+- **The branch already exists**, from the earlier `build`. Check it out; do not
+  create a second one.
 
 **Where it may end:** any of those, plus `verify`, `review`, and - opting in
 explicitly - `ship`.
@@ -129,7 +155,7 @@ Non-negotiable, regardless of what is asked mid-run:
 ## Step 1 - preflight
 
 **Check only what the run needs but will not produce itself.** This is the rule
-that makes a long range possible at all: a `stack..review` run has no overview
+that makes a long range possible at all: an `architect..review` run has no overview
 and no verification command when it starts, because `context` and `scaffold` are
 the steps that create them. Demanding them up front blocks the exact range the
 input syntax exists to allow.
@@ -180,7 +206,13 @@ the coordinator no way to know - it sees a part that simply went quiet.
 **Always:**
 
 - the range is valid, and every skill in it is permitted
-- on a branch, not `main`, with no unrelated uncommitted changes
+- no unrelated uncommitted changes - an unattended run must be able to tell its
+  own work from someone else's
+- on a branch, not `main` - **only when `build` is not in the range.** If it is,
+  `build`'s Step 2 creates the branch from the spec, and requiring one first is
+  circular: `ship` deletes the branch when it merges, so a clean `main` is the
+  normal state between items and exactly where `autopilot spec..review` is meant
+  to start. Refusing there makes the documented usage unreachable.
 - `blueprint/project-plan.md` filled in, not placeholder text
 - no P0 or P1 finding already open
 
@@ -250,8 +282,9 @@ points, and the reason an unattended pass is recoverable.
 - **`architect` concludes the project is more than one part.** That is a
   conversion of the whole repository - every file moves, a board and status files
   appear, and each part is scaffolded separately afterwards. It is git-recoverable
-  and still not autopilot's call: it changes what the project *is*, and the next
-  skill in range would otherwise scaffold into a layout that is about to move.
+  and still not autopilot's call: it changes what the project *is*, and every
+  skill after it in range - `stack`, `layout`, `scaffold` - would otherwise be
+  answering for a project of a different shape.
   Report the recommendation and stop.
 - the budget from Step 1b is reached
 
@@ -285,8 +318,8 @@ Stop. Report:
 
 **Say plainly that nothing has been pushed or deployed**, and that the work needs
 a real read before it goes anywhere. **The longer the range, the more true that
-is** - a run from `stack` produced a stack choice, an architecture, a spec, code,
-and a review of its own code, and a person has seen none of it.
+is** - a run from `architect` produced a system design, a stack choice, a layout,
+a spec, code, and a review of its own code, and a person has seen none of it.
 
 Then say plainly that **nothing has been merged or pushed**, and that the work
 needs a real read before it ships. An unattended pass has had no human eyes on

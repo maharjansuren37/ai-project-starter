@@ -8,7 +8,7 @@ usually right. Read the two constraints at the bottom before choosing.
 
 ## Why parts, mechanically
 
-`blueprint/context/current-work.md` is read or written by 10 skills, and `ship`
+`blueprint/context/current-work.md` is read or written by 11 skills, and `ship`
 resets it. In a single shared blueprint, two agents collide badly: agent A is
 mid-build with three steps ticked, agent B ships, the reset wipes A's spec **and
 its ticked checkboxes — which are the entire resume mechanism.** A restarts from
@@ -38,7 +38,8 @@ shop/
 
 **The skills are installed at the product root as well as in each part**, because
 some of them are not part work at all: `orchestrate` reads the board and every
-part, and `ideate`, `stack` and `architect` write the product plan that lives here.
+part, and `ideate`, `architect`, `stack` and `layout` write the product plan that
+lives here.
 Without a copy at the root there is nowhere to run them from — and running them
 from inside a part is worse than inconvenient, because an unqualified
 `blueprint/` there means *that part's* blueprint, so the board would be read and
@@ -57,6 +58,14 @@ backend have genuinely different conventions.
 ```bash
 new-project.sh shop --parts web,api
 ```
+
+**`--parts` takes top-level directory names.** Both this and
+`convert-to-parts.sh` create every part in one pass, before `layout` has decided
+anything, and what `convert-to-parts.sh` moves is keyed on a top-level name. A
+nested part - `apps/web`, the shape every JavaScript workspace has - is seeded
+one at a time with `lib/seed-part.sh`, which does take a path. See *adopt a
+repository that was already multi-part* below; the same sequence works on a
+product you are creating from scratch.
 
 ## Or convert one that already exists — usually better
 
@@ -109,11 +118,48 @@ To add a further part to a product that is already split:
 lib/seed-part.sh /path/to/shop mobile
 ```
 
+## Or adopt a repository that was already multi-part
+
+**A workspace that existed before this workflow did.** `convert-to-parts.sh` is
+the wrong tool - it converts a *single* project by moving everything into one
+part, and here the parts are already in the right places. Instead, seed the root
+and then each existing directory:
+
+```bash
+install.sh --target . --skills-only
+lib/seed-product-root.sh . apps/web-app apps/mobile backend shared
+lib/seed-part.sh . apps/web-app
+lib/seed-part.sh . apps/mobile
+lib/seed-part.sh . backend
+lib/seed-part.sh . shared
+```
+
+**Pass the same paths to both scripts.** They disagree otherwise: the root would
+list bare names while the parts registered paths, and a five-part product came
+out described as eight - three of them directories that do not exist.
+
+**A part may be nested.** `apps/web-app` is what every JavaScript workspace looks
+like, and `Product root:` is written with the right number of `..` for its depth.
+**The status file and the board entry use the last segment only**, because both
+are flat - so two parts whose paths end in the same name are refused rather than
+silently sharing one status file.
+
+**Nothing existing is touched.** Each part keeps its own `package.json`, `src/`
+and README; the workflow adds `AGENTS.md`, `blueprint/` and the skills alongside.
+
+**Then run `setup` in each part**, which reads the real code and records the
+stack and commands that are actually there. The plans are empty until it does.
+
+**Consider whether you want this at all.** One `blueprint/` at the root - a plain
+`install.sh` with no parts - gives one build loop for the whole workspace. That
+is simpler, and it is the right answer unless two sessions genuinely need to work
+different parts at once. See the two constraints at the top of this guide.
+
 ## The sequence that matters more than the tooling
 
-**1. Together, single-threaded.** `ideate`, `stack`, `architect`, and the contract.
-**Parallelising this is how three agents invent three incompatible assumptions**
-that only surface at integration.
+**1. Together, single-threaded.** `ideate`, `architect`, `stack`, `layout`, and
+the contract. **Parallelising this is how three agents invent three incompatible
+assumptions** that only surface at integration.
 
 **`architect` is where the parts get decided**, and it runs before anything is
 installed. If you started single, that is where you convert — the conversion
@@ -121,7 +167,7 @@ moves markdown at this point, and an installed framework with its lockfile and
 dependency directory at any later one.
 
 **2. Scaffold each part**, in its own directory, with its own scaffolder. Two
-parts means running `scaffold` twice; it reads the layout `architect` recorded
+parts means running `scaffold` twice; it reads the layout `layout` recorded
 and installs into it. Also set up what bridges them — the contract file in
 `contracts/`, its generation step, and the one ecosystem-neutral command that
 runs both parts' checks.

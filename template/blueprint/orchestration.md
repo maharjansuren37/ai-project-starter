@@ -17,14 +17,16 @@ The contract line above is the one genuinely shared decision, and **only
 
 **One file per part**, under `blueprint/status/`:
 
-    blueprint/status/web.md
-    blueprint/status/api.md
+    (none yet - `lib/seed-part.sh` lists each part here as it seeds it)
 
 **Each part writes only its own file, and no file has two writers.** That is what
 makes this safe when sessions genuinely run at the same time — as they do when a
 subagent is driving each part. A single shared table with a row per part would
 need every writer to rewrite the whole file, and two finishing at the same
-instant would silently lose one of the rows. **Separate files remove the race by
+instant would silently lose a row. Measured, it is worse than that: three
+concurrent writers doing 300 updates each left the shared file **empty** - not
+short a row, but truncated to nothing, while three separate files came through
+the identical load intact. **Separate files remove the race by
 construction rather than by convention.**
 
 Each status file:

@@ -109,6 +109,14 @@ Work the spec's build steps in order, one at a time. For each step:
    for a step that added none. If it says a string appears in the output, look for
    the string. **Match the evidence to the claim the step actually made.**
 
+   **A new test is not trusted until it has failed once.** Break the thing it
+   covers, watch it go red, put it back. **And check the break was real** - a
+   mutation that changes no behaviour leaves the test passing against code that
+   was meant to be broken, and that looks identical to a proven test. Reversing a
+   list whose elements carry their own order is the shape to watch for: the rows
+   come back the same and nothing is learned. **If a test still passes after you
+   broke it, suspect the mutation before the test.**
+
 6. **Iterate until it works - but stop guessing after the second try.** If it
    fails, or the user wants it different, revise the step, show the updated diff,
    and re-check. Nothing is committed until the user is happy with the step.
@@ -136,9 +144,54 @@ Work the spec's build steps in order, one at a time. For each step:
    - **Walk me through it** - a deeper, line-level explanation of the new code:
      why this approach, what each part does, what to watch out for. Then re-ask
      this choice. It is a loop-back, not a terminal answer.
+   - **Run the rest unattended** - hand the remaining steps to
+     `autopilot build..review`, which resumes from the first unchecked step and
+     ends with a review packet rather than stopping after each one.
    - **Stop here** - pause. Say where things stand: the branch is intact, the
      ticked steps record the progress, `build` resumes from the first
      unchecked step.
+
+**Offer the unattended option by name, not just when asked.** Per-step review
+earns its keep on the first step of an item, where the code reveals decisions the
+spec could not have - a column type, a default, a tool that reports success
+having done nothing. **By the third step it is usually ceremony**, and a workflow
+that treats every step as equally deserving of scrutiny teaches people to stop
+reading. The option existing in another skill's documentation is not the same as
+offering it at the moment it is wanted.
+
+## When a step makes configuration *required*
+
+Removing a default is the usual shape - a fallback secret deleted, an optional
+setting made mandatory, a validated environment variable. The change is correct
+and it **breaks every environment that was quietly relying on the default**.
+
+**The local run is the one place it will not show**, because the person making
+the change has the value exported in their shell. Everything passes, and the
+next environment to start is the one that fails - CI on the next push, or
+production on the next deploy, which is worse.
+
+So when a step makes a value required:
+
+- **Add it to the Environments table in `AGENTS.md`** for every environment
+  listed, not only the one in front of you. That table exists to be the list.
+- **Name it in the Deployment section** of the plan if it is not already there -
+  `host` and `deploy` read that section, not this file.
+- **Check the pipeline supplies it.** A pipeline is an environment; it is simply
+  one nobody thinks of as one until it goes red.
+- **Say it in the handoff.** "This now requires `X` to be set" is a sentence the
+  next person needs, and it is invisible in a diff that only shows a default
+  being deleted.
+- **If a person has to supply the value, it goes in
+  `blueprint/context/needs-you.md`** - generating a key, getting an API token,
+  choosing a database URL. **Naming a variable is not the same as assigning the
+  work of producing one.** A name in `.env.example` says the variable exists; the
+  needs-you line says someone must act, what happens until they do, and by when.
+  Without it the requirement is recorded in three files and owned by nobody, and
+  the first person to find out is whoever starts the app next.
+
+The same applies in reverse to anything that starts reading a new variable, even
+with a default: a default that is wrong in production is a silent failure rather
+than a loud one.
 
 ## Step 4 - clear the findings gate, then hand off
 

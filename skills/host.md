@@ -131,6 +131,26 @@ someone sets it up:
 - **Where do secrets live?** A file on the box, readable only by that user -
   mode 600, outside the repository, referenced by path from the unit. **Not
   inline in the unit file**, which is world-readable.
+- **How many files?** **One per environment is the default**, and most projects
+  should stop there. Splitting by service - a file for the database, one for
+  mail, one for object storage - buys something real only when there is a
+  boundary underneath it: a different person owns the credential, it rotates on a
+  different schedule, or one process should be able to read it and another should
+  not. **Where all of them are read by one process on one box, splitting adds
+  files to keep in sync and a new way to have exactly one of them missing** -
+  which fails at start-up, or worse, at the first request that touches the one
+  service whose file was forgotten.
+  Split when the boundary exists, and say which boundary it is. Never split
+  because it looks tidier: one file per environment with every name in it is
+  easier to audit, and auditing is the thing you will actually do with it.
+- **What is actually installed on it?** A box you own is not a development
+  machine and ships far less than one. Check for what the deploy itself needs
+  before planning around it - a real Ubuntu VPS had **no `git`, no `rsync`, no
+  `sqlite3` client and no `python3-venv`**, while the owner believed the existing
+  site was deployed with rsync. Ask the box, not the person: everyone
+  misremembers how a thing they set up months ago actually works, and the answer
+  changes the deploy design rather than being a detail of it.
+
 - **What patches the operating system?** Unattended upgrades, or a person with a
   calendar. A box nobody updates is the part of self-hosting that has no managed
   equivalent.
@@ -152,6 +172,24 @@ someone sets it up:
 - **Backups, and where they go.** On a managed database this is a checkbox; here
   it is entirely yours, it is the thing most likely to be skipped, and a backup
   that has never been restored is not a backup.
+
+  **Copying the database file is not a backup of a database that is running.**
+  `cp` on a live SQLite file can land mid-transaction, with a write-ahead log
+  that does not match what it copied; the result opens without complaint and is
+  wrong. Use the engine's own mechanism - `sqlite3`'s backup API or `VACUUM
+  INTO`, `pg_dump`, `mysqldump` - which take a consistent snapshot while the
+  application keeps writing. **Then check the snapshot** and delete it if the
+  check fails, because a corrupt file sitting in a backup directory is worse than
+  an empty one: it looks like protection.
+
+  **Restoring means starting the application against the copy**, not opening it
+  in a database client. The client proves the file parses. Only the app proves
+  the schema matches the code that has to read it - and that is the thing you
+  will need at the moment you need it.
+
+  **And a backup on the same disk is not off the box.** Say where the copy goes
+  and what pulls it there; if nothing does, that is a risk to record, not a
+  backup to tick.
 
 **Say plainly what self-hosting costs and what it buys.** It is cheaper and you
 control it; the price is that every item above is now your job, and the ones that

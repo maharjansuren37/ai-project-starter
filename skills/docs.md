@@ -1,9 +1,15 @@
 ---
 name: docs
-description: "Write and maintain the documentation a project actually needs: a real README, API docs where there is an API, and dev-notes - the decision record explaining why the project is shaped this way, the status file for picking it up cold, and the hand-run equivalent of every automated command. Use when the user runs `docs`, when the README is still boilerplate, after a decision worth recording, or when preflight flags documentation as a blocker."
+description: "Write and maintain the documentation a project actually needs: a real README, API docs where there is an API, and dev-notes - the decision record explaining why the project is shaped this way, the status file for picking it up cold, and the hand-run equivalent of every automated command. With --check, audits what is already written against what is actually true and reports the rot read-only, changing nothing - a question nothing else in this workflow asks. Use when the user runs `docs`, wants to know whether the documentation is still accurate, when the README is still boilerplate, after a decision worth recording, or when preflight flags documentation as a blocker."
 ---
 
 # docs - write down what the code cannot say
+
+Where this sits:
+
+    any point in the loop -> docs -> the record survives the session
+
+    `ship` (a release) -> docs -> `CHANGELOG.md`
 
 Two audiences, and they need different things:
 
@@ -56,7 +62,11 @@ For someone who has never seen this project:
   prerequisites and environment setup
 - **how to build and test it**
 - **how it is deployed**, or that it is not yet
-- **how the project is organised** - enough to find things
+- **how the project is organised** - enough to find things, and **point a
+  newcomer at `AGENTS.md`**. It is the orientation for anyone joining, not only
+  for tools, and the README is the only place a person is ever told that. The
+  template ships with that pointer; rewriting the README without it silently
+  removes the one signpost a human has.
 
 Keep it short. A README nobody finishes is a README nobody reads. Detail belongs
 in `dev-notes/` or in the code.

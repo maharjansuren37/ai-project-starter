@@ -3,7 +3,9 @@
 The pack itself — not a project built with it. There is no `blueprint/` here;
 this repo *ships* that.
 
-**Start with `README.md`** for what this is and how it installs, then
+**Start with `dev-notes/status.md`** - it opens with checking what is uncommitted
+and what to run to confirm the tree is intact, and neither is guessable. Then
+**`README.md`** for what this is and how it installs, then
 **`docs/anatomy.md` before changing the workflow's shape** — what every part
 reads, writes and gates on, in one place. `dev-notes/decisions.md` records why
 the repo is shaped this way; read D2 and D3 before restructuring it.
@@ -23,8 +25,11 @@ in order, no tool-specific `/skill` references, no references to retired names,
 **that every script is referenced** by some doc, skill or other script,
 **that every field on the coordination board has a writer**, **that every state
 file has a declared writer that really writes it**, **that every skill states
-its preconditions**, and **that every file living at the product root is named
-as one** by each skill that reads it — 13 rules.
+its preconditions**, **that every file living at the product root is named
+as one** by each skill that reads it, **that every skill writing a foundational
+decision says what happens when that decision already exists**, and **that every
+mode a skill declares is named in its description** — the description is what an
+agent matches on, so a mode missing from it cannot be reached — 15 rules.
 
 **The cross-file rules exist because the file-level ones could not see the worst
 bugs found here**: a script nothing routed to, a board field with four readers
@@ -32,9 +37,16 @@ and nothing that ever set it, a state file whose only writer was on the wrong
 route, and a path that resolves to a part's own directory when the file lives at
 the product root. Every one of them passed every file-level check.
 
-Each is driven by a **declared list** in `template/AGENTS.md` rather than by a
-smarter check. That is the move to copy when a new class shows up: write down
-what was implicit, and the rule follows.
+Each is driven by a **declared list** rather than by a smarter check - in
+`template/AGENTS.md` for the rules about a product's files, and in `check.sh`
+itself for the rules about skills (`entry_points`, `exempt_preconditions`,
+`decision_skills`). That is the move to copy when a new class shows up: write
+down what was implicit, and the rule follows.
+
+**The list is the rule.** Adding a skill to `decision_skills` is what forces the
+question rule 14 exists to ask, so a new decision-writing skill has to be put
+there deliberately - and a stale name in any of those lists is itself an error,
+because dead config hides the thing it was meant to check.
 
 ```bash
 ./tests/run.sh          # everything
@@ -56,8 +68,17 @@ whatever is underneath.
 
 **Add a test with the fix, not after it.** Every defect these tests cover was
 found by running something and comparing the result against what was claimed -
-never by reading. That is what these files automate, and nothing else here does
-it. See *Changing the workflow's shape* in `docs/anatomy.md` for the four kinds
+never by reading.
+
+**Then break the fix and watch the test fail - and check the break was real.**
+The mutation is the part that goes wrong. On 2026-09-08 a test was "proven" by
+reversing an input array; each element carried its own index and the query sorted
+by index, so nothing changed and the test passed against code that was supposed
+to be broken. **A test verified by a mutation that changes nothing is not
+verified**, and it reads exactly like one that is. Mutate the thing the assertion
+actually names, and if the test still passes, suspect the mutation before the
+test. That is what these files automate, and nothing else here does
+it. See *Changing the workflow's shape* in `docs/anatomy.md` for the five kinds
 of change that have broken this pack before, and the step each one hides.
 
 Skills live in `skills/`, one file each. `install.sh` fans them out to both

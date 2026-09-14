@@ -4,9 +4,9 @@
 *.log
 build-output/
 
-# The pack's own build notes stay local. This repo is the starter itself, and
-# these are a working diary of building it: a chronological record naming real
-# projects, live hosts and a domain. `dev-notes/decisions.md` is tracked - it
-# explains why the pack is shaped this way and names nothing personal.
-dev-notes/status.md
-dev-notes/coverage.md
+# The pack's working diary stays local. It is the chronological record of
+# building the pack and names real projects, live hosts and a domain.
+# `dev-notes/status.md` and `dev-notes/coverage.md` are the public summaries of
+# it and ARE tracked - the test suite and the entry points read them, so a clone
+# without them fails its own tests. tests/test-seams.sh holds both halves.
+dev-notes/journal.md

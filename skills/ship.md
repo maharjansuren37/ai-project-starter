@@ -142,7 +142,13 @@ The project's verification command must pass first.
 
 1. **Squash-merge the branch into `main`, only with the user's explicit
    go-ahead.** The item lands as one commit.
-2. Delete the branch after a clean merge.
+2. Delete the branch after a clean merge. **A squash-merge needs `git branch -D`,
+   not `-d`** - squashing writes a new commit rather than recording the branch as
+   merged, so git refuses the safe delete on work that is fully in `main`. Check
+   the trees match (`git diff main <branch>` is empty) and then force it; do not
+   reach for `-D` just because `-d` complained, and never on a branch you have
+   not merged. Delete the remote branch too if it was pushed, or the pull request
+   view keeps offering it.
 3. **Stop and ask** whether to push `main` to its upstream. Approval to merge is
    not approval to push, and neither is running this skill.
 4. Push only after a separate, explicit yes **in this conversation**. If the repo
@@ -190,6 +196,14 @@ Then point at what is next:
 - **`deploy`** if this project is already live. Merging put the work on `main`;
   it did not put it in front of anyone. **This is the step most easily forgotten**,
   because the loop feels finished at the merge and the branch is gone.
+- **`context`** whenever the overview's *Current state* is now wrong - which is
+  **after every ship**, because this skill just ticked an item off
+  `blueprint/build-plan.md` and reset the spec. The overview is the file every
+  cold session loads, so a stale one starts the next session on a false picture:
+  wrong item count, wrong next item, and any claim that has since changed. It is
+  cheap and idempotent. **Nothing else refreshes it** - `spec` is named in that
+  skill's re-run list and this one was not, so it silently went stale once per
+  item.
 - otherwise **`spec`** for the next item.
 
 ## Rules

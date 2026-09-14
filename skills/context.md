@@ -28,7 +28,39 @@ and, worse, silently disagrees with the plans until then.
 and say to run `ideate` first.** This skill distils the plans; it does not write
 them.
 
-Step 2 checks the plans for shape problems and is the real gate - a half-template
+**Two sections of `blueprint/project-plan.md` must hold real content, not the
+seeded instruction text, because Step 3 generates directly from them:**
+
+- **6. Architecture** - filled by `architect`, which now runs first
+- **5. Tech** - filled by `stack`, against that architecture
+
+The loop is `ideate -> architect -> stack -> layout -> scaffold -> ci -> context`, so by the
+time this runs legitimately both have happened. Checking it here costs nothing and
+**a gap is not a contradiction** - Step 2 stops only on plans that disagree with
+themselves, so without this a plan that is merely *unfinished* passes straight
+through it.
+
+**How to tell a section is unfilled: the seeded instruction sentence is still
+present**, whatever has been added around it. **Do not use length or
+non-emptiness.** A plan can carry a real, useful block *underneath* the seeded
+text - genuine constraints on a stack nobody has chosen yet - and that section is
+still unfilled, because the decision Step 3 generates from has not been made. That
+shape is the careful case, not the exotic one: it is what someone writes while
+waiting for `stack`. A length test reads it as filled and generates a Stack
+section describing no stack.
+
+**Check both sections before stopping, and report every unfilled one in a single
+stop, in loop order** - `architect` before `stack`. In the normal case they are
+unfilled together, because neither skill has run: stopping at the first sends the
+user away, and stops them again on the second when they return.
+
+**Read both plans anyway and give Step 2's findings alongside the stop, as
+advisory.** The stop already costs a round trip; it should buy everything this
+skill can see rather than one sentence. A build plan that is not a checklist is
+readable now, and discovering it on the next run is a second trip for something
+that was on screen the first time.
+
+Step 2 checks the plans for shape problems and is the second gate - a half-template
 plan generates an authoritative-looking overview full of nothing, and every skill
 downstream reads that file as the source of truth.
 
@@ -52,6 +84,13 @@ an authoritative-looking file full of nothing. Check for:
 - **Contradictions.** A feature the stack cannot support, data in the model that
   no feature reads or writes, an architecture describing a platform the Tech
   section does not name.
+- **A data model the stack already owns.** The model is written before the stack
+  now, so a library chosen later may create and migrate tables the plan also
+  specifies by hand - an auth library owning users and sessions is the common
+  case, and a plan written earlier almost always describes a `User` table with
+  columns. **Two of them drift, and the bug arrives at the second migration.**
+  `stack` is meant to reconcile this when it chooses; check it did, because
+  nothing else looks.
 - **Missing decisions the build will immediately need.** No stack at all, or no
   data model while half the features store things.
 
@@ -62,6 +101,13 @@ writing it.
 **A contradiction the user has to resolve stops this skill.** Do not generate an
 overview from plans that disagree with themselves, and do not pick a side on
 their behalf. Say what conflicts and ask.
+
+**So does a gap in a section Step 3 generates from.** A contradiction and an
+unfilled section both produce an overview that is wrong, and only one of them
+looks wrong while you are writing it - which is why the Tech and Architecture
+checks are preconditions above rather than entries in the list here. Reporting
+"no stack yet" and then generating a Stack section anyway is the failure this
+step exists to prevent, performed by the step itself.
 
 ## Step 3 - generate the overview
 
@@ -83,11 +129,26 @@ vagueness in every session that loads it.
 
 Mark it as generated at the top, with the instruction to edit the plans instead.
 
+**Then fill `AGENTS.md`'s `## What this is`** with the same problem statement,
+cut to two or three sentences. It ships as a placeholder comment and **no other
+skill writes it** - so without this the entry point every tool reads opens with
+an empty section in a project whose plans have been complete for weeks.
+
+It is not a duplicate of the overview. `CLAUDE.md` loads
+`project-overview.md`, but every other tool reads `AGENTS.md` and may never open
+the overview at all: this section is the only project description some agents
+will ever see. Keep it short and replace it whenever the problem statement in
+the plan changes - **but leave it alone if someone has already written prose
+there**, since it is a user-owned file and a hand-written description beats a
+regenerated one.
+
 ## Step 4 - report what changed
 
 If an overview already existed, say what this regeneration changed - new items,
 a changed stack, a resolved contradiction. If this is the first generation, say
-so.
+so. **Say whether `AGENTS.md`'s `## What this is` was filled, left alone because
+it already had prose, or updated** - it is a user-owned file, so a write to it
+is never silent.
 
 Then point at what is next:
 
@@ -101,6 +162,10 @@ Then point at what is next:
 
 - After editing either planning doc.
 - After `spec` adds a new item to the build plan.
+- **After every `ship`.** It ticks an item off the build plan and resets the
+  spec, so *Current state* - the item count, what is next, what is in flight -
+  is wrong the moment it finishes. This is the most frequent reason to re-run
+  and was the one missing from this list.
 - After anything that changes direction, users, data, stack, or deployment.
 
 It is cheap and idempotent. Re-running it when nothing changed produces the same

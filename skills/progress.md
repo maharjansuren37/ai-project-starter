@@ -5,6 +5,10 @@ description: "Read-only report on where the project stands and whether the workf
 
 # progress - where things stand, and what to do next
 
+Where this sits:
+
+    any point in the loop -> progress -> the next skill it names
+
 Read-only. This writes nothing, changes nothing, and runs nothing that could.
 
 Its job is to answer two questions completely: **where are we**, and **what is
@@ -125,6 +129,20 @@ useful answer is what would start the next one - add an item and `spec` it,
 `preflight` before a release, `monitor` if it is live. Say the plan is complete
 rather than reporting four empty lines and leaving the reader to work out whether
 something is wrong.
+
+**And say what the project already knows it might build next.** Two lists exist
+and neither is read by anything else:
+
+- **Section 11 of `blueprint/project-plan.md`**, what `ideate` deferred and when
+  it should come back. *"Editing and deleting sessions - soon after"* is an
+  answer to "what next", written by someone who had thought about it.
+- **Open findings in `blueprint/context/findings.md`.** P2s and P3s carried
+  across merges are specs half-written: three views accepting any HTTP method is
+  one item, not three.
+
+Name a couple of the most useful, with their recorded reasons. **A deferred item
+nobody re-reads is a decision that quietly became a deletion**, and this is the
+only step positioned to notice.
 
 **Report both sides of the work, because they finish independently.** The agent's
 side is visible here - items checked, spec steps ticked, findings closed, the

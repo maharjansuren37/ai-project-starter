@@ -7,7 +7,7 @@ description: "Create the actual application from the stack recorded in the proje
 
 Where this sits:
 
-    stack -> architect -> scaffold -> `ci` -> context -> spec
+    `stack` -> `layout` -> scaffold -> `ci` -> `context` -> `spec`
 
 `stack` decided what to build with. This builds it. **It is bigger than running
 the framework's CLI** - a stack of "Next.js, Postgres, Prisma, Auth.js, Tailwind,
@@ -27,8 +27,14 @@ Read the Tech section of `blueprint/project-plan.md`. If it is empty or still
 placeholder text, **stop** and say to run `stack` first. This skill installs a
 decision; it does not make one.
 
-**Read the Architecture section for the code layout**, which `architect` decides:
-one application, or two parts in their own directories. That determines whether
+**Read the layout `layout` decided**, and build into it. This skill installs a
+framework into a shape that has already been chosen; it does not choose one.
+
+**If the Architecture section names parts but no layout has been recorded, stop
+and say to run `layout` first.** Installing a framework into a directory
+structure that is about to change is the expensive way round - every config file
+points at paths, and moving them afterwards means editing what the scaffolder
+generated, which is its own class of silent failure. That determines whether
 this skill scaffolds once or twice and into which directories, so it is not
 optional detail - it is the shape of everything below. It may also name an
 integration that needs a client library.
@@ -127,10 +133,27 @@ specific runtime, target or component the chosen framework needs:
   though the install did nothing. On Arch that is three packages: `dotnet-sdk`,
   `aspnet-runtime`, `aspnet-targeting-pack`. Check `/usr/share/dotnet/packs/`
   for a `.Ref` entry, not just `dotnet --list-runtimes`.
+- **A browser automation tool downloads browsers, and that is the slow part.**
+  Installing the package is seconds; fetching its browser binaries is a few
+  hundred megabytes and can fail on a slow link long after the install looked
+  done. Run its own install step explicitly, and **prove one browser launched**
+  rather than trusting the package manager - a harness that cannot start a
+  browser is exactly as blind as no harness, and `verify` will believe it has
+  one. Where the download fails, say so and record it in
+  `blueprint/context/needs-you.md`: it is a real blocker on every visual check,
+  and the project runs fine without it right up until someone needs to see a page.
 - **Python** can have a working interpreter and no `pip`. Several distributions
   strip it from the system install deliberately: `python3 -m pip` fails while
   `python3 -m venv` works and pip exists inside the venv. Check the way the
   project will actually install things.
+
+  **And `import venv` succeeding is not `venv` working.** Debian and Ubuntu ship
+  the module in the standard library and `ensurepip` in a separate package, so
+  the import passes and `python3 -m venv` then fails at the last step with
+  *"ensurepip is not available"*. Checking by importing reports a working
+  toolchain on a machine that has none. **Create a throwaway venv and run `pip`
+  inside it** - that is the only check that distinguishes the two, and it costs a
+  second.
 - **Mobile** needs a platform SDK and often a licence accepted, neither of which
   the language toolchain implies.
 
@@ -292,11 +315,67 @@ Installed is not the same as usable:
 
 - run the **ORM's init** and create the first schema file
 - write **`.env.example`** naming every variable the project needs - **names
-  only, never real values** - and confirm `.env` itself is gitignored
+  only, never real values** - and confirm `.env` itself is gitignored.
+
+  **Build that list from three places and merge them**, the same way `preflight`
+  does much later: **the code's own reads**, **what the framework and ORM
+  require without appearing in any source file**, and **anything already in
+  `.env`**. A list built by searching for `process.env` or its equivalent finds
+  what the project reads *explicitly* and misses every variable a framework reads
+  *for* it - which is usually the set that matters. A Next standalone server
+  reads `PORT`, `HOSTNAME` and `NODE_ENV`; none of them appear in the source, and
+  none of them were in a real project's `.env.example` until `preflight` found it
+  five skills later. **`preflight` already mandates this merge; doing it only
+  there guarantees the gap rather than catching it.**
+
+- **set the security headers the framework has a place for**, and **record the
+  one you are not setting.** Where they live is framework-specific -
+  `next.config.ts`, a middleware, a settings module - and this is the step that
+  knows which. Set the uncontroversial ones: `X-Content-Type-Options`,
+  `Referrer-Policy`, `X-Frame-Options`.
+
+  **Do not invent a Content-Security-Policy here.** A CSP needs the application
+  to exist, and a wrong one breaks it in ways that look like unrelated bugs.
+  **Write down that it is not set and why**, in the plan's Deployment section, so
+  `preflight` audits a decision instead of an absence. **An unset header nobody
+  recorded and an unset header somebody chose look identical at the end and are
+  not the same thing.**
 - add the **scripts**: dev, build, test, lint
 - define the **one verification command** that runs the checks this project now
   genuinely has. Preferred order: typecheck, tests, build. **Never invent a
   check just to fill it in.**
+
+## Editing what the scaffolder generated
+
+Wiring a scaffold means editing files a tool wrote, and that is where a whole
+class of silent failure lives.
+
+**Anchor on structure, never on a quoted string.** A generator's quote style is
+its own choice and it changes between versions - Django writes
+`path('admin/', ...)` with single quotes, and an edit matching double quotes
+finds nothing, changes nothing, and reports nothing. Use a pattern that tolerates
+either, or parse the file.
+
+**Then assert the edit applied.** Not "the command exited 0" - the replacement
+either changed the text or it did not, and only one of those is success.
+
+**And a formatter will erase the evidence.** This is the part that makes the
+class so hard to see: run `ruff format`, `prettier` or `gofmt` after a failed
+edit and it normalises the quotes the edit was looking for - so the file ends up
+reading exactly as though the edit had never been attempted. There is nothing
+left to notice.
+
+**Verify by asking the program, not by reading the file.** `INSTALLED_APPS` is
+what `django.apps.get_app_configs()` returns, not what the source appears to say.
+A route exists if the resolver has it. A setting is what the framework resolved,
+not what the assignment looks like. **Three separate wirings failed this way on
+one real project** - an app never installed, a route never registered, and a
+database path never read. The third put the database inside the release
+directory, where the next deploy would have replaced it with an empty one.
+
+**All three passed every check that existed**, because `manage.py check` is happy
+with an app that nothing imports, the tests set the environment variable
+themselves, and the formatter had tidied the wreckage.
 
 ## Step 7 - audit what landed
 
@@ -312,6 +391,20 @@ piece into one of four buckets:
 
 **A half-installed stack that reports success is the worst thing this skill can
 do.** If something did not install, that is the headline, not a footnote.
+
+**Then check each installed dependency has a call site**, and name the ones that
+do not. **This audits *use*, not presence, and nothing else in the workflow
+does** - an installed package satisfies every check here, in `ci`, and in
+`review`, right up until `preflight` asks whether the capability exists.
+
+A logger installed and imported nowhere is the shape to watch for: it reads as
+"logging is handled" to everyone who looks at the manifest, and it is a
+dependency pretending to be a capability. Found in a real project, where `pino`
+sat in `package.json` with zero references while `architect` had named three
+signals that had to be measurable.
+
+**Either wire it now or record why not**, with the item that will. Both are fine
+answers; silence is not.
 
 ## Step 8 - prove it runs
 

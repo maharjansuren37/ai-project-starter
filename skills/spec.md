@@ -64,7 +64,29 @@ Four modes, chosen from the argument:
 | a number or name | That specific planned item | the spec |
 | prose describing a bug or small change | Ad-hoc fix, not a plan item | the spec |
 | an observation from `monitor` - a slow path, an unused feature, a repeated request | Plan addition, gated | the plan line, then the spec |
+| **a new feature described in prose** - something the plan does not have | Plan addition, gated | the plan line, then the spec |
 | `--preview` *(optionally with a number or name)* | Read-only briefing | nothing |
+
+**A new feature is a plan addition, not an ad-hoc fix.** The two look alike from
+the outside - both arrive as prose - and they end up in different places. A fix
+repairs something already built and needs no plan line. A feature is new scope:
+it gets a numbered item in `blueprint/build-plan.md` **before** it is spec'd, so
+`ship` can tick it, `progress` counts it, and the plan still describes the
+product afterwards. Ask which it is when it is genuinely unclear; guessing "fix"
+is the cheaper mistake to make and the harder one to notice, because the work
+lands and the plan quietly stops being true.
+
+**Check the deferred list first.** Section 11 of `blueprint/project-plan.md` is
+where `ideate` records what was cut and when it should come back - *"editing and
+deleting sessions, soon after"*. **Nothing else reads that table**, so an item
+sitting there stays there forever unless someone looks. If the feature is already
+on it, **move it rather than adding a second line**, and say that is what you did:
+the deferred entry carries the reason it was cut, which is context the new item
+should inherit rather than lose.
+
+**A finished plan is the normal case for this.** Every item checked means the
+first version is done, not that the project is - and adding the next item is how
+it continues. Do not treat a complete plan as a reason to route this into a fix.
 
 `--preview` exists for deciding *whether* to build something. It reads the same
 context and reports what the item is, what it depends on, what it will touch, how

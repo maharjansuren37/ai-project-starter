@@ -204,8 +204,14 @@ all.
 
 Say what changed, what was left alone, and - most usefully - **what is still
 missing**: no test runner, no verification command, no remote, an empty project
-plan. Then name the next action, usually filling in the two planning docs and
-running `context`.
+plan. Then name the next actions **in the order of the chain at the top of this
+file**: fill in the two planning docs if they are still empty, then `ci` if Step
+5 found a remote with no automatic checks, then `context`.
+
+**Name every one that is still to do, not only the first.** A report that names
+one next step reads as the whole list, and the rest are dropped as soon as the
+conversation moves on to something else - an adoption that followed "run
+`context`" had run neither three days later.
 
 ## Rules
 

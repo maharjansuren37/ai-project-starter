@@ -147,7 +147,7 @@ PY
 assert_refuses "a missing state table fails loudly" "rule 12 is not checking anything" lint "$r"
 
 section "rule 13 - product-root files are named as such"
-# The path class, which status.md recorded as unlintable: a skill running inside
+# The path class, long recorded as unlintable: a skill running inside
 # a part reads `blueprint/x.md`, which there means that part's directory, while
 # the file lives at the product root. Six recurrences - and the last found five
 # skills reading a product plan that does not exist in a part at all, including
@@ -192,12 +192,74 @@ assert_refuses "a stale name in the entry-point list is caught" \
 
 r=$(fresh_repo)
 python3 - "$r/check.sh" <<'PY'
-import sys, pathlib
+import sys, pathlib, re
 p = pathlib.Path(sys.argv[1]); s = p.read_text()
-p.write_text(s.replace('exempt_preconditions="ideate setup progress preflight debug docs prepare"',
-                       'exempt_preconditions="ideate setup progress preflight debug docs prepare gone"'))
+# Appended to whatever the list currently is, never to a copy of it. This test
+# hardcoded the literal list, so removing `ideate` from it made the replace a
+# silent no-op: check.sh was never modified, the bogus name was never inserted,
+# and the test reported a failure to detect something that was never there.
+s2 = re.sub(r'^(exempt_preconditions=")([^"]*)(")$', r'\1\2 gone\3', s, count=1, flags=re.M)
+assert s2 != s, "exempt_preconditions assignment not found - the test needs updating"
+p.write_text(s2)
 PY
 assert_refuses "and in the preconditions list" \
   "which is not a skill" lint "$r"
+
+section "rule 14 - a decision skill says what happens when the decision exists"
+# `ideate` assumed greenfield and would have erased the `- [x]` marks that are
+# the resume mechanism. Three more had the same shape: `architect` never said
+# re-deciding a layout after scaffold moves every file - the pack knew, and said
+# it in `autopilot` instead - `prototype` never said a second design.md can
+# describe a look the code does not have, and `stack` sent two different
+# situations to one wrong answer.
+#
+# The list IS the rule. A fifth decision-writing skill has to be added to it
+# deliberately, and that is the moment someone asks the question this forces.
+r=$(fresh_repo)
+python3 - "$r/skills/architect.md" <<'RULE14'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+i = s.index('**If the Architecture section is already filled')
+j = s.index('## Input')
+p.write_text(s[:i] + s[j:])
+RULE14
+assert_refuses "a decision skill silent about re-deciding is caught" \
+  "never say what happens when that decision already exists" lint "$r"
+
+# A declared list naming a skill that does not exist is dead config, and it hides
+# the thing it was meant to check - the defect the other two lists already had.
+r=$(fresh_repo)
+python3 - "$r/check.sh" <<'RULE14'
+import sys, pathlib, re
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+s2 = re.sub(r'^(decision_skills=")([^"]*)(")$', r'\1\2 gone\3', s, count=1, flags=re.M)
+assert s2 != s, 'decision_skills assignment not found - the test needs updating'
+p.write_text(s2)
+RULE14
+assert_refuses "a stale name in the decision list is caught" \
+  "which is not a skill" lint "$r"
+
+section "rule 15 - a declared mode is named in the description"
+# The description is what an agent matches a request against, so a mode missing
+# from it is reachable only by someone who already knows it exists. `docs
+# --check` was exactly that - its own Input row, its own section, and a question
+# the skill says nothing else in this workflow asks - invisible to every agent
+# choosing a skill. The Input tables ARE the declaration here, so no list.
+r=$(fresh_repo)
+python3 - "$r/skills/docs.md" <<'RULE15'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+i = s.index(' With --check, audits')
+j = s.index(' Use when the user runs `docs`')
+p.write_text(s[:i] + s[j:])
+RULE15
+assert_refuses "a mode dropped from the description is caught" \
+  "never names it in the description" lint "$r"
+
+# Five skills have an Input table with no backticked argument rows. Under
+# `set -euo pipefail` the empty grep aborted check.sh with exit 1 and no output
+# at all - a linter that finds nothing and a linter that died look identical.
+assert_ok "a skill whose Input table has no argument rows does not kill the run" \
+  bash -c 'out=$("$1/check.sh" 2>&1); rc=$?; [ "$rc" -eq 0 ] && [ -n "$out" ]' _ "$REPO"
 
 finish

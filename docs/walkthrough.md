@@ -13,7 +13,7 @@ parallel see [multi-part.md](multi-part.md).
 cd my-app
 ```
 
-The command creates the directory with all 26 skills already inside, so when you
+The command creates the directory with all 27 skills already inside, so when you
 open your AI tool everything is there. There is deliberately **no source
 directory yet** — `scaffold` creates it once `stack` knows what this is.
 
@@ -50,9 +50,10 @@ and the read-only reporters, and they work in any state.
 | Run | What happens | What you do |
 |---|---|---|
 | `ideate` | Interviews you, then proposes both planning docs | **Push back on the scope cuts.** Its most useful act is telling you what it moved out of the first version. If it has a UI, give it any reference you already like — that fills the UI/UX section `prototype` starts from. |
-| `stack` | Asks the platform, then whether you already know what to build with | Say if you do — it uses your choice and fills gaps around it. Versions get pinned. |
-| `architect` | **Code layout first** — one app or two parts — then structure, data model, where logic lives, then the quality bar | Expect "system design does not apply" for a small project; that is correct, not lazy. **If it says two parts, convert before scaffolding** — it is markdown now and an installed framework later. |
-| `scaffold` | Installs the whole stack into the layout `architect` chose, then audits itself against the plan | Approve the command list. **Read the audit** — it reports anything missing rather than quietly succeeding. |
+| `architect` | **Six shape questions first** — separate services, background work, consistency, availability, load, external APIs — then structure, data model, where logic lives, and the quality bar as numbers | Expect "system design does not apply" for a small project; that is correct, not lazy. **Answer the six honestly** — they are what `stack` reads to rule technologies in and out, and they are cheap to say now and expensive later. **They are read together, not singly:** consistency across writes is a transaction requirement every relational database meets, while concurrent writers is the load question. |
+| `stack` | Reads those answers and the quality bar, asks the platform, then whether you already know what to build with | Say if you do — it uses your choice and fills gaps around it. Versions get pinned. **It will say if your choice cannot meet the bar**; that is the point of the order. |
+| `layout` | Takes the framework's own shape — directory names, where config lives, where tests go — and checks the ecosystem's traps | Approve it. It is markdown now and an installed framework with a lockfile after `scaffold`. |
+| `scaffold` | Installs the whole stack into the layout just approved, then audits itself against the plan | Approve the command list. **Read the audit** — it reports anything missing rather than quietly succeeding. |
 | `ci` | Writes one workflow file using the project's own verify command, runs it locally, **stops before pushing** | **Do this before the first item, not after the last.** One test and a typecheck is enough — the point is that the pipeline exists before the code does. |
 | `context` | Generates the overview every session loads | Re-run it whenever a plan changes. |
 | `prototype` | *Optional.* Throwaway mockups that settle the look, plus a durable `design.md` | Decide deliberately. Redoing HTML is free; redoing components is not. |
@@ -63,8 +64,8 @@ contrast value that was measured rather than chosen. `ship` deletes the mockups
 and keeps that, so the next UI item builds against what was already settled
 instead of reinventing it.
 
-**Nothing is written without your approval** at `ideate`, `stack`, `architect`, or
-`scaffold`. Each stops and shows you the exact text or commands first.
+**Nothing is written without your approval** at `ideate`, `architect`, `stack`,
+`layout`, or `scaffold`. Each stops and shows you the exact text or commands first.
 
 ## 3. Build it, one item at a time
 
@@ -161,6 +162,42 @@ is what stops the small fixes nobody remembers shipping from going unmentioned.
 **Undoing a shipped feature:** `rollback` plans the reversal with a dependency
 review first. **Undoing a bad release** is different — that is `deploy rollback`,
 which restores the previous release now and investigates after.
+
+**Checking everything still works:** `verify --all`. Ordinary `verify` proves one
+item against the running app and then that proof is archived and never looked at
+again — so a new item can break an old screen and the only thing that would catch
+it is a test, which is precisely the kind of evidence `verify` exists because
+tests do not give you. `--all` re-proves every shipped feature's done-whens from
+the archive, separates regressions from claims that are merely superseded or
+belong to a feature since cut, and raises what it finds in the findings ledger.
+**It is the most expensive check here** and grows with the project — worth it
+before a release or after a dependency upgrade, not every item. `preflight`
+requires it, or an honest account of which claims the test suite genuinely covers.
+
+**Changing what the project is for:** `ideate --rescope`. The plain `ideate` stops
+when the plan is already filled, because the default path proposes a whole new
+build plan and approving one erases the `- [x]` marks that are the entire resume
+mechanism. The rescope mode runs the same interview but carries completed items
+and their history across, names every item leaving the plan, and routes a checked
+one to `rollback` — a shipped feature leaves code behind, and cutting the plan
+line does not remove it. It hands off to `setup` and `context`, not `stack` and
+`scaffold`, because there is already code here.
+
+**Changing the stack after there is code:** there is no skill that does this, and
+that is deliberate — it is a rewrite. `stack` refuses a project that has code and
+sends you to `setup`, which *records* a stack rather than choosing one. So the
+order is: make the change, then `setup` to re-read what the repo now is, then
+`context` to regenerate the overview, and a `dev-notes/decisions.md` entry marking
+the original choice superseded. **The cost of this is why `stack` asks what it
+asks** — every question there is cheap before `scaffold` and expensive after.
+
+**Changing the directory names after there is code:** that is `layout`, not
+`stack` and not `architect`, and it is the cheapest of the three to change and
+still not free — every config file the scaffolder generated points at paths.
+**Tell the three apart by the question**: what the project is for is `ideate`,
+how many things deploy is `architect`, what they are built with is `stack`, and
+where the files sit is `layout`. Going to the wrong one gets a confident answer
+to a question you did not ask.
 
 ## Checking where you are
 

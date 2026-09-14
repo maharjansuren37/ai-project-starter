@@ -39,7 +39,24 @@ replacement, and the existing one is preserved.
 
 ## Step 1 - find out what is really here
 
-- the verification command, and whether it passes **right now**
+- the verification command, and whether it passes **from a clean checkout** -
+  not merely in the working tree you are sitting in. **A runner has only what is
+  committed**, and generated files are usually gitignored: route types, compiled
+  protobufs, a generated client, anything a framework emits into a build
+  directory. Locally they are already there and the command passes; on the runner
+  they are absent and it fails, reporting a missing *symbol* rather than a
+  missing *step*, which reads as broken code.
+
+  **Check it, do not reason about it.** Move the build directory aside and run
+  the command again. Found this way on a real run: `npm run verify` passed in the
+  working tree and failed on a clean checkout with `Cannot find name
+  'LayoutProps'` - Next generates route types into a gitignored directory, and
+  the fix was a generation step at the front of the verify command, not anything
+  in the workflow file.
+
+  **The fix belongs in the verification command, not the pipeline.** A generation
+  step added only to the workflow makes CI pass while the same clean checkout
+  still fails for a human.
 - the package manager and lockfile
 - the runtime version - matched to what `AGENTS.md` records, not the newest
 - any existing CI config, and what it currently runs
@@ -74,9 +91,16 @@ product root - `architect` records the filename and the regeneration command in
 runtime failure that no unit test on either side will catch, because each part is
 individually correct against its own copy.
 
-**This job is the only one that runs on every push.** `integrate` makes the same
-check, but only when someone remembers to run it - so if the contract check lives
-nowhere else, put it here.
+**This job is the only check that runs without anyone asking.** `integrate`
+makes the same check, but only when someone remembers to run it - so if the
+contract check lives nowhere else, put it here.
+
+**"Without anyone asking" is not "on every push".** The triggers below are pull
+requests and pushes to the default branch, so **a feature branch gets nothing
+until a pull request exists** - which is deliberate, and worth saying out loud
+because it is the opposite of what a green local run suggests. Work the whole
+build loop on a branch and CI has seen none of it. Say so when handing off, so
+nobody reads a branch with no red marks as a branch that passed.
 
 **If this project has a build, CI is where it happens.** Not a laptop, and not
 the target. A developer's machine is not reproducible - it carries their runtime,
@@ -128,7 +152,10 @@ Then write it, with:
 ## Step 4 - prove it, then stop
 
 Run the same command sequence locally, in the same order the pipeline will, and
-confirm it passes.
+confirm it passes. **From a clean checkout** - the same check as Step 1, run
+again now that the command may have changed: remove the build and dependency
+directories, install from the lockfile, and run the sequence. Anything still
+present from earlier work is something the runner will not have.
 
 **Add `ci` to the Environments table in `AGENTS.md`.** It is an environment: a
 different machine, a pinned runtime, and no `.env`. Recording the pin there is

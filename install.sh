@@ -23,6 +23,8 @@ Usage:
   --skills-only  Install the skills and nothing else. For the product root of a
                  multi-part project, which needs every skill available but has
                  no build loop of its own - no build-plan, no current-work.
+                 Detected automatically: a directory with the board and no
+                 'Part:' in its AGENTS.md is a product root, and this is implied.
   --help         This
 USAGE
 }
@@ -41,6 +43,27 @@ done
 
 [ -d "$TARGET" ] || { echo "No such directory: $TARGET" >&2; exit 1; }
 TARGET="$(cd "$TARGET" && pwd)"
+
+# The product root of a multi-part project takes the skills and nothing else -
+# no code is built there and there is no build loop. README documents
+# --skills-only for it, but a flag you have to remember is not a guard: run
+# without it and the root got a fundamentals.md it has no use for, and six
+# AGENTS.md sections were reported as legacy drift because they were compared
+# against the *part* template. Both symptoms were one missing question.
+#
+# A product root has the board and declares no `Part:`; a part declares both
+# `Part:` and `Product root:`. That is the difference, so detect it rather than
+# asking the user to.
+PRODUCT_ROOT=0
+if [ -f "$TARGET/blueprint/orchestration.md" ] \
+   && ! grep -q '^- Part: ' "$TARGET/AGENTS.md" 2>/dev/null; then
+  PRODUCT_ROOT=1
+  if [ "$SKILLS_ONLY" -eq 0 ]; then
+    SKILLS_ONLY=1
+    DETECTED_ROOT=1
+  fi
+fi
+DETECTED_ROOT="${DETECTED_ROOT:-0}"
 
 # Was the workflow already here? Decided before anything is written, because
 # every counter below changes as a side effect of writing. A first install and an
@@ -115,6 +138,15 @@ for src in "$HERE"/skills/*.md; do
   if [ "${#desc}" -gt 150 ]; then
     desc="$(printf '%s' "$desc" | cut -c1-150 | sed 's/[ ,-]*[^ ]*$//')..."
   fi
+  # The modes a skill declares in its `## Input` table. Rule 15 makes sure they
+  # are named in the skill's own description - which is what Claude Code matches
+  # on - but the wrapper keeps only the first sentence, so no mode ever survived
+  # into it. In opencode the wrapper is what the command menu shows and what the
+  # model matches a request against, so every mode was invisible there:
+  # `/ideate --rescope` worked, because $ARGUMENTS reaches the skill, but nobody
+  # could discover it. Naming them in the body costs one line and no menu space.
+  modes="$(sed -n '/^## Input/,/^## [^I]/p' "$src" | grep -oE '^\| `[^`]+`' \
+           | sed 's/^| //; s/`//g' | grep -E '^-|^[a-z]' | tr '\n' ' ' || true)"
   mkdir -p "$(dirname "$dest")"
   # Generated beside the target and compared, so a wrapper that changed can be
   # named in the report rather than replaced silently.
@@ -127,6 +159,14 @@ description: $desc
 Use the \`$name\` skill from this project's workflow, following its steps in
 order and stopping at every gate it defines. Read its \`## Before you start\`
 section first and report anything missing rather than working around it.
+EOF
+  if [ -n "$modes" ]; then
+    cat >> "$tmp" <<EOF
+
+Modes this skill declares: $modes- see its \`## Input\` table for what each does.
+EOF
+  fi
+  cat >> "$tmp" <<EOF
 
 \$ARGUMENTS
 EOF
@@ -281,12 +321,66 @@ fi
 #
 # Compared by heading, and reported rather than inserted: a project may have
 # deleted a section deliberately, and this file is not ours to edit.
-if [ -f "$TARGET/AGENTS.md" ] && [ -f "$HERE/template/AGENTS.md" ]; then
+# A product root's AGENTS.md comes from template/product/AGENTS.md and has
+# deliberately different sections. Comparing it against the part template
+# reported six sections missing and told the user to run `setup` over a file
+# that was exactly right.
+AGENTS_TEMPLATE="$HERE/template/AGENTS.md"
+[ "$PRODUCT_ROOT" -eq 1 ] && AGENTS_TEMPLATE="$HERE/template/product/AGENTS.md"
+if [ -f "$TARGET/AGENTS.md" ] && [ -f "$AGENTS_TEMPLATE" ]; then
   missing_sections=""
   while IFS= read -r heading; do
     grep -qxF "$heading" "$TARGET/AGENTS.md" || missing_sections="$missing_sections${missing_sections:+, }${heading#\#\# }"
-  done < <(grep '^## ' "$HERE/template/AGENTS.md")
+  done < <(grep '^## ' "$AGENTS_TEMPLATE")
   [ -n "$missing_sections" ] && legacy="$legacy\n  - AGENTS.md has no: $missing_sections\n    Sections the workflow added after this project was set up. It is your file,\n    so nothing here writes them - 'setup' fills them in from the real project."
+fi
+
+# The board's part list was copied verbatim from the template until 2026-09-07,
+# so any product seeded before then names `web.md` and `api.md` whatever its
+# parts are really called - the coordination file wrong about the one thing it
+# exists to record. It is project-owned state (it holds the frozen contract
+# line), so this reports and never rewrites, like every other legacy shape here.
+BOARD="$TARGET/blueprint/orchestration.md"
+if [ -f "$BOARD" ] && [ -d "$TARGET/blueprint/status" ]; then
+  board_wrong=""
+  for f in "$TARGET"/blueprint/status/*.md; do
+    [ -e "$f" ] || continue
+    n=$(basename "$f")
+    grep -q "^    blueprint/status/$n\$" "$BOARD" || board_wrong="$board_wrong $n"
+  done
+  board_phantom=""
+  while read -r n; do
+    [ -n "$n" ] && [ ! -e "$TARGET/blueprint/status/$n" ] && board_phantom="$board_phantom $n"
+  done < <(sed -n 's|^    blueprint/status/\(.*\.md\)$|\1|p' "$BOARD")
+  if [ -n "$board_wrong" ] || [ -n "$board_phantom" ]; then
+    legacy="$legacy\n  - blueprint/orchestration.md lists the wrong parts."
+    [ -n "$board_phantom" ] && legacy="$legacy\n    Names files that do not exist:$board_phantom"
+    [ -n "$board_wrong" ]   && legacy="$legacy\n    Does not name real parts:$board_wrong"
+    legacy="$legacy\n    It was seeded from a template that hard-coded web.md and api.md. The\n    board is yours - it holds the contract line - so nothing here rewrites it.\n    Fix the list under 'Where each part's state lives' to match blueprint/status/."
+  fi
+fi
+
+# CLAUDE.md is yours and is never rewritten here, so a project created before a
+# context file was added keeps an import list that predates it - the file lands
+# in blueprint/context/ and nothing ever loads it. That is the pack's own worst
+# defect class arriving by upgrade: a file with readers and nothing that puts it
+# in context. Reported against what the current template declares auto-loaded.
+if [ -f "$TARGET/CLAUDE.md" ] && [ -f "$HERE/template/AGENTS.md" ]; then
+  unimported=""
+  while read -r ctx; do
+    [ -n "$ctx" ] || continue
+    # only mention a file the project actually has - otherwise this is noise
+    [ -f "$TARGET/$ctx" ] || continue
+    grep -qF "@$ctx" "$TARGET/CLAUDE.md" || unimported="$unimported ${ctx##*/}"
+  done < <(awk '/These are already loaded/{f=1} /These are not loaded/{f=0} f' \
+             "$HERE/template/AGENTS.md" | grep -oE 'blueprint/context/[a-z-]+\.md' | sort -u)
+  if [ -n "$unimported" ]; then
+    legacy="$legacy\n  - CLAUDE.md does not load:$unimported"
+    legacy="$legacy\n    These exist here and AGENTS.md lists them as always-loaded context, but"
+    legacy="$legacy\n    CLAUDE.md's import list predates them, so no session actually gets them."
+    legacy="$legacy\n    CLAUDE.md is yours, so nothing here edits it - add a line per file:"
+    for m in $unimported; do legacy="$legacy\n        @blueprint/context/$m"; done
+  fi
 fi
 
 if [ -d "$TARGET/blueprint/.state" ]; then
@@ -309,22 +403,34 @@ echo "  $command_count opencode command wrapper(s) in .opencode/command/"
 [ -n "$replaced_commands" ] && \
   echo "    rewritten from a different version:$replaced_commands"
 if [ "$SKILLS_ONLY" -eq 1 ]; then
-  echo "  skills only - no template files written"
+  if [ "$DETECTED_ROOT" -eq 1 ]; then
+    echo "  product root detected - skills only, no build-loop files"
+    echo "  (it has the board and declares no 'Part:'; --skills-only was implied)"
+  else
+    echo "  skills only - no template files written"
+  fi
 else
   echo "  $template_count template file(s) written (existing ones left alone)"
   [ "$refreshed" -gt 0 ] && echo "  $refreshed pack-owned file(s) refreshed"
-  [ -n "$legacy" ] && { echo; echo "From an older version of this pack:"; printf '%b\n' "$legacy"; }
-  echo
-  # "Run setup" is right for a first install and wrong for an upgrade: a project
-  # already part-way through the loop has been tuned, and `setup` would re-tune
-  # it. Anything replaced here means the pack moved on, not that the project is
-  # new. `progress` is the skill that says where an existing project stands.
-  if [ "$HAD_WORKFLOW" -eq 1 ]; then
-    echo "This project already had the workflow. Nothing of yours was changed -"
-    echo "run 'progress' to see where it stands, or 'prepare' for anything waiting"
-    echo "on you. Run 'setup' only if the workflow no longer matches this repo."
-  else
-    echo "Next: open this directory with your AI tool and run 'setup' so the workflow"
-    echo "matches what is actually here."
-  fi
+fi
+
+# Legacy findings print in BOTH modes. They used to sit inside the branch above,
+# so `--skills-only` silently suppressed them - and the product root, which is
+# the one place --skills-only is the documented mode, is also the only place the
+# board's part list can be wrong. The report that existed for that case could
+# never reach it.
+[ -n "$legacy" ] && { echo; echo "From an older version of this pack:"; printf '%b\n' "$legacy"; }
+
+echo
+# "Run setup" is right for a first install and wrong for an upgrade: a project
+# already part-way through the loop has been tuned, and `setup` would re-tune
+# it. Anything replaced here means the pack moved on, not that the project is
+# new. `progress` is the skill that says where an existing project stands.
+if [ "$HAD_WORKFLOW" -eq 1 ]; then
+  echo "This project already had the workflow. Nothing of yours was changed -"
+  echo "run 'progress' to see where it stands, or 'prepare' for anything waiting"
+  echo "on you. Run 'setup' only if the workflow no longer matches this repo."
+else
+  echo "Next: open this directory with your AI tool and run 'setup' so the workflow"
+  echo "matches what is actually here."
 fi

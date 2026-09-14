@@ -7,7 +7,7 @@ description: "Lock the visual direction before building, with throwaway static m
 
 Where this sits:
 
-    `architect` -> `scaffold` -> `ci` -> `context` -> prototype -> `spec` -> `build`
+    `layout` -> `scaffold` -> `ci` -> `context` -> prototype -> `spec` -> `build`
 
 Deciding what something should look like *while* building it is expensive: every
 change touches real components, real state, and real tests. Deciding it first, in
@@ -32,6 +32,15 @@ Everything this produces is disposable by design.
   the direction `ideate` was meant to capture, and inventing one here means the
   user first sees a visual identity nobody chose. Ask for it, or record
   explicitly that there is no preference and you are choosing a plain default.
+- **`blueprint/context/design.md` already exists, or the tokens have already
+  shipped into the app's real stylesheet** - stop and say so before mocking
+  anything. The mockups here are disposable and `ship` deletes them, but
+  `design.md` is not: `review` measures the built UI against it, and `spec` and
+  `architect` read it. **A second run that writes a fresh `design.md` can leave
+  it describing a look the code does not have**, and `review` then reports a
+  clean result against a bar nobody built to. Say whether this is a deliberate
+  redesign - in which case the shipped theme is what has to change, and the
+  mockups are the cheap place to decide how - or an accident, and stop.
 
 ## Step 1 - agree the direction first
 

@@ -23,7 +23,10 @@ Usage:
   convert-to-parts.sh --parts A,B --existing A [--target DIR] [--allow-dirty]
 
   --parts A,B    Every part the product will have, including the one the
-                 current project becomes.
+                 current project becomes. Top-level directory names: what
+                 moves into --existing is decided by a top-level name, so a
+                 nested part (apps/web) is seeded afterwards with
+                 lib/seed-part.sh instead - docs/multi-part.md.
   --existing A   Which of those the current project becomes. Everything here
                  now - source, config, blueprint, dev-notes - moves into it.
                  Must be one of --parts.
@@ -66,7 +69,17 @@ for p in "${PART_LIST[@]}"; do
   p="$(echo "$p" | tr -d '[:space:]')"
   [ -n "$p" ] || continue
   case "$p" in
-    */*|.|..) echo "Not a usable part name: $p" >&2; exit 1 ;;
+    # lib/seed-part.sh takes a nested path and this does not: everything in the
+    # project moves into --existing, and what moves is decided by comparing
+    # top-level directory names. Say that, rather than refusing a shape the
+    # guide two files away calls supported and naming no route that takes it.
+    */*)
+      echo "Not a usable part name here: $p" >&2
+      echo "convert-to-parts.sh creates parts as top-level directories." >&2
+      echo "Convert with top-level names, then add a nested part with" >&2
+      echo "lib/seed-part.sh - see docs/multi-part.md." >&2
+      exit 1 ;;
+    .|..) echo "Not a usable part name: $p" >&2; exit 1 ;;
   esac
   clean_parts+=("$p")
 done
@@ -151,7 +164,7 @@ mkdir -p "$TARGET/blueprint/context"
 # created one are the same shape. Neither overwrites a file already present.
 "$HERE/lib/seed-product-root.sh" "$TARGET" "${clean_parts[@]}"
 for p in "${clean_parts[@]}"; do
-  "$HERE/lib/seed-part.sh" "$TARGET" "$p"
+  "$HERE/lib/seed-part.sh" "$TARGET" "$p" --quiet
 done
 
 # --- repair the ignore rules if this project predates the skills fix ---
@@ -190,7 +203,12 @@ fi
 # front-end-only one is judgement, and the plans are the user's files. Same rule
 # as install.sh - name it, and name who fixes it.
 split_report=""
-_items=$(grep -c '^- \[ \]' "$TARGET/$EXISTING/blueprint/build-plan.md" 2>/dev/null || echo 0)
+# `grep -c` prints 0 and exits 1 when it matches nothing, so `|| echo 0` appended
+# a second 0 and every `-gt` below died with "integer expected" - three of them,
+# on stderr, immediately after this script moved every file in the project. It
+# looked exactly like a crash mid-move. The assignment carries grep's own exit
+# status, so `|| _x=0` covers both no-match and a file that is not there.
+_items=$(grep -c '^- \[ \]' "$TARGET/$EXISTING/blueprint/build-plan.md" 2>/dev/null) || _items=0
 if [ "$_items" -gt 0 ]; then
   split_report="$split_report
   - $EXISTING/blueprint/build-plan.md has $_items unchecked item(s), and every
@@ -199,14 +217,14 @@ if [ "$_items" -gt 0 ]; then
     tell those apart - 'spec' reads whichever part you run it in, and an empty
     plan there reports 'nothing is queued'. Split them per part by hand."
 fi
-_needs=$(grep -c '^### ' "$TARGET/$EXISTING/blueprint/context/needs-you.md" 2>/dev/null || echo 0)
+_needs=$(grep -c '^### ' "$TARGET/$EXISTING/blueprint/context/needs-you.md" 2>/dev/null) || _needs=0
 if [ "$_needs" -gt 0 ]; then
   split_report="$split_report
   - $EXISTING/blueprint/context/needs-you.md has $_needs open line(s). Any that
     are about a toolchain or an account belong to the part that uses it;
     'prepare' only reads the part it is run in."
 fi
-_dec=$(grep -c '^## D[0-9]' "$TARGET/$EXISTING/dev-notes/decisions.md" 2>/dev/null || echo 0)
+_dec=$(grep -c '^## D[0-9]' "$TARGET/$EXISTING/dev-notes/decisions.md" 2>/dev/null) || _dec=0
 if [ "$_dec" -gt 0 ]; then
   split_report="$split_report
   - $EXISTING/dev-notes/decisions.md has $_dec entry(ies) taken before the split.

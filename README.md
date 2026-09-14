@@ -4,10 +4,17 @@ One command creates a project directory with every skill already in it. Open it
 with Claude Code — or any AI coding tool, or nothing at all — and the whole
 lifecycle is there: ideate, stack, scaffold, build, ship, host, deploy, monitor.
 
-> **Inspired by [ai-blueprint](https://github.com/bradtraversy/ai-blueprint) by
-> [Brad Traversy](https://github.com/bradtraversy)**, MIT licensed. The workflow
-> design is his; the content here is written from scratch. See
-> [Credit](#credit).
+## Install
+
+Clone it anywhere. There is nothing to build and nothing to install — no
+dependencies and no network calls. It needs `bash`, `python3`, and the usual
+Unix tools (`sed`, `awk`), which is what the scripts here actually shell out to.
+
+```bash
+git clone https://github.com/maharjansuren37/ai-project-starter.git ~/ai-project-starter
+```
+
+Then create your first project:
 
 ```bash
 ~/ai-project-starter/new-project.sh my-app
@@ -17,6 +24,16 @@ cd my-app
 
 The command **creates** the directory. That is the point — there is never a
 moment where you have a tool open in an empty folder with no skills in it.
+
+To type `new-project.sh` and `install.sh` without the path — as the rest of this
+README does — put the clone on your `PATH`:
+
+```bash
+echo 'export PATH="$HOME/ai-project-starter:$PATH"' >> ~/.bashrc && exec bash
+```
+
+To update the pack later, `git pull` in the clone; to push those updates into a
+project you already created, see [Updating](#updating).
 
 ### Where it creates it
 
@@ -41,18 +58,20 @@ my-app/
 ├── CLAUDE.md          imports AGENTS.md
 ├── dev-notes/         why it is shaped this way, and where it stands
 ├── blueprint/         plans, the current spec, findings, history
-├── .claude/skills/    26 skills for Claude Code
-└── .agents/skills/    the same 25 for everything else
+├── .claude/skills/    27 skills for Claude Code
+├── .agents/skills/    the same 27 for everything else
+└── .opencode/command/ a `/name` wrapper per skill, for opencode
 ```
 
 **No source directory yet** — that is deliberate. `scaffold` creates it once
-`stack` has decided what the project is built with and `architect` has decided
-its layout, using the framework's own conventions rather than one imposed here.
+`architect` has decided what the system's shape is, `stack` has decided what it
+is built with, and `layout` has decided where the files go, using the framework's
+own conventions rather than one imposed here.
 
 ## The loop
 
 ```
-ideate → stack → architect → scaffold → ci → context  plan it
+ideate → architect → stack → layout → scaffold → ci → context  plan it
      → prototype                                    settle the look (optional)
      → spec → build → verify → review → ship        build it
      → preflight → host → deploy → monitor          run it
@@ -60,7 +79,7 @@ ideate → stack → architect → scaffold → ci → context  plan it
 
 | | |
 |---|---|
-| **Plan** | `ideate` `stack` `architect` `scaffold` `ci` `context` |
+| **Plan** | `ideate` `architect` `stack` `layout` `scaffold` `ci` `context` |
 | **Design** | `prototype` |
 | **Build** | `spec` `build` `verify` `review` `ship` |
 | **Operate** | `preflight` `host` `deploy` `monitor` `migrate` `integrate` |
@@ -157,14 +176,14 @@ Skills install to `.claude/skills/<name>/SKILL.md` and `.agents/skills/<name>/SK
 
 **[opencode](https://opencode.ai)** reads `AGENTS.md` (and prefers it over
 `CLAUDE.md` when both exist), and finds the skills in `.agents/skills/` without
-any extra install — verified with `opencode debug skill`, which lists all 25.
+any extra install — verified with `opencode debug skill`, which lists all 26.
 
 But **loading a skill is not the same as being able to type `/spec`.** opencode
 has no `/name` for a skill; the model picks one by matching your request against
 its description. This pack's whole documented UX is "run `spec`", so `install.sh`
 also writes `.opencode/command/<name>.md` — one thin wrapper per skill, in
 opencode's own command format. Those are wrappers, not copies: the skill body
-stays the single source. `opencode debug config` shows all 25 registered.
+stays the single source. `opencode debug config` shows all 27 registered.
 
 So in opencode you can type `/spec`, and in Claude Code `/spec`, and both reach
 the same file.
@@ -225,8 +244,13 @@ that is where every serious bug here has been: **no skill is unreachable**,
 **every script is referenced** by some doc or skill or other script, **every
 field on the coordination board has a writer**, **every state file the skills
 read has a declared writer that really writes it**, **every skill states its
-preconditions**, and **every file that lives at the product root is named as
-such** by each skill that reads it. A skill nothing routes to, a script nothing
+preconditions**, **every skill that writes a foundational decision says what
+happens when that decision already exists**, **every mode a skill declares is
+named in its description** — the description is what an agent matches on, so a
+mode missing from it cannot be reached — and **every file that lives at the
+product root is named as such** by each skill that reads it. **15 rules.**
+
+A skill nothing routes to, a script nothing
 mentions, a field every reader sees as permanently empty, and a path that
 resolves to the wrong directory inside a part are all invisible to a
 file-by-file check — and every one of them has actually shipped.
@@ -297,17 +321,9 @@ to fail, and a test suite with that flaw hides every defect beneath it.
 
 ## Credit
 
-**This is inspired by [ai-blueprint](https://github.com/bradtraversy/ai-blueprint)
-by [Brad Traversy](https://github.com/bradtraversy)**, MIT licensed.
-
-The workflow design is his — the `blueprint/` directory layout, the findings
-ledger, and the plan → spec → build → verify → review → ship loop. Those are the
-ideas that make this work, and they came from there.
-
-What is different here is scope and mechanics rather than concept: the lifecycle
-continues past merge into `preflight`, `host`, `deploy` and `monitor`;
-cross-references are plain names so no generator is needed; and multi-part
-products get per-part state and a coordination board. The skill text, the
-scripts, the linter and the tests are written from scratch.
-
-**If you find this useful, the original is worth your time.**
+The `blueprint/` layout, the findings ledger, and the plan → spec → build →
+verify → review → ship loop come from
+[ai-blueprint](https://github.com/bradtraversy/ai-blueprint) by
+[Brad Traversy](https://github.com/bradtraversy), MIT licensed — worth your time
+if this is useful to you. The skill text, scripts, linter and tests here are
+written from scratch. See [LICENSE](LICENSE).

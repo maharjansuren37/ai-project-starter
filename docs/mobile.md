@@ -30,14 +30,14 @@ rendered — that is an unverified result, not a pass.
 cd trail-log
 ```
 
-The command creates the directory with all 26 skills already inside, so when you
+The command creates the directory with all 27 skills already inside, so when you
 open the session everything is there. There is deliberately **no source
-directory yet** — `scaffold` creates it once `stack` knows what you are building.
+directory yet** — `scaffold` creates it once `layout` says where it goes.
 
 ## The sequence
 
 ```
-ideate → stack → architect → scaffold → ci → context
+ideate → architect → stack → layout → scaffold → ci → context
      → prototype → spec → build → verify → review → ship
 ```
 
@@ -45,45 +45,48 @@ ideate → stack → architect → scaffold → ci → context
    **cutting scope**: it will tell you which features it moved out of the first
    version and why. Push back if it cuts something you need.
 
-2. **`stack`** — asks the platform first, then **whether you already know what
-   you want to build with**. If you say Expo, that is the decision and it fills
-   in the gaps around it. If you want a recommendation, it gives one with a
-   runner-up named. It also asks the **language** and settles **versions** — pin
-   them.
-
-3. **`architect`** — screens and navigation rather than routes. Names any device
+2. **`architect`** — screens and navigation rather than routes. Names any device
    capability a feature actually needs (camera, location, notifications) and only
    those. Expect it to decline the system-design tier for a small app, which is
    correct.
 
-   **It runs before `scaffold` because it decides the code layout** — one
-   application, or an app plus a separate backend in its own directory. That is
-   what `scaffold` installs into. A mobile app talking to its own API is a
-   two-part project, and deciding that after the scaffolder has run means moving
-   an installed toolchain instead of a few markdown files.
+   **It runs before `stack` because it decides how many deployable parts there
+   are** — one application, or an app plus a separate backend of its own. A
+   mobile app talking to its own API is a two-part project, and that is an
+   architectural fact about the product, not a consequence of picking Expo.
 
-4. **`scaffold`** — installs the whole stack into that layout, not just the
+3. **`stack`** — reads that shape and the quality bar, asks the platform, then
+   **whether you already know what you want to build with**. If you say Expo,
+   that is the decision and it fills in the gaps around it. If you want a
+   recommendation, it gives one with a runner-up named. It also asks the
+   **language** and settles **versions** — pin them.
+
+4. **`layout`** — where the files physically sit, in the framework's own terms:
+   Expo's `app/` router directory, where the theme lives, where tests are
+   discovered from. Markdown now; an installed toolchain after the next step.
+
+5. **`scaffold`** — installs the whole stack into that layout, not just the
    framework, then audits itself against the plan and reports anything missing.
    This is the step with the most mobile-specific behaviour; see below.
 
-5. **`ci`** — writes one workflow file from the project's own verify command and
+6. **`ci`** — writes one workflow file from the project's own verify command and
    runs it locally. **Do this before the first item, not after the last.** On
    mobile the pipeline is a typecheck and tests: a store build needs signing
    credentials, which belong in `deploy`, not here.
 
-6. **`context`** — generates the overview every session loads. Re-run it whenever
+7. **`context`** — generates the overview every session loads. Re-run it whenever
    a plan changes.
 
-7. **`prototype`** *(optional, but decide deliberately)* — settles the look in
+8. **`prototype`** *(optional, but decide deliberately)* — settles the look in
    throwaway mockups before components exist. On mobile the tokens land in a
    **theme object or NativeWind config, not a stylesheet** — there is no CSS to
    port into.
 
-8. **`spec` → `build` → `verify` → `review`** — one item at a time. `spec`
+9. **`spec` → `build` → `verify` → `review`** — one item at a time. `spec`
    red-teams its own draft before showing it to you; `build` works one reviewed
    step at a time; `review` writes findings that gate the merge.
 
-9. **`ship`** — final safety pass, archive, one commit, squash-merge with your
+10. **`ship`** — final safety pass, archive, one commit, squash-merge with your
    explicit approval. Asks separately before pushing.
 
 ## Where mobile differs

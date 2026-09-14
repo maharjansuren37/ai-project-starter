@@ -88,6 +88,25 @@ Check, and report only what blocks:
   `host` creates it, or the table is stale, and deploying to an environment
   nobody recorded is how a staging release reaches production
 - the **commit being deployed** is identified, and is what the user expects
+- **that commit is on the default branch.** Deploying from a feature branch
+  passes every other check here and leaves production running code that exists
+  nowhere else. Three things follow, and none of them announces itself:
+  **CI is testing something other than what is live** - it runs on the default
+  branch; **the next deploy silently reverts production**, because the next
+  person deploys from `main` in good faith; and **any fix in that branch is one
+  `git branch -D` from gone**, including the ones that made this deployable.
+
+  It happened on a real project: a P0 data-loss repair, the error pages and the
+  login lockout all went live from an unmerged branch, and `main` had none of
+  them. Every gate passed.
+
+  **Not a refusal - a stop and a question.** A deliberate hotfix ahead of the
+  merge is legitimate and sometimes necessary. Say plainly that this commit is
+  not on the default branch, name what merging it would take, and **get the
+  user's explicit go-ahead to deploy anyway** - then record it, because an
+  unmerged production deploy is a thing the next person needs to know about and
+  cannot see. Usually the right answer is to `ship` first; it is one step, and it
+  is the step that makes the two agree.
 - **for a multi-part project**: `integrate` passed against these exact versions,
   and the contract is current
 - **for production only**: `preflight` has been run and returned go, or the user

@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Read-only code audit that records what it finds in the ledger at blueprint/context/findings.md. Reviews the current work, the changed files, a named path, or the whole project, through every lens or one focused lens: quality, security, performance, or tests. Findings get durable IDs, a severity from P0 to P3, and a status; an open or fixed P0 or P1 blocks the merge at `ship`. Writes nothing but the ledger - never edits source, installs, or commits. Use when the user runs `review`, asks for a code review, security review, performance check, or test-quality pass, or before closing out an item."
+description: "Read-only code audit that records what it finds in the ledger at blueprint/context/findings.md. Reviews the current work (`current`), the changed files (`changed`), a named path, or the whole project (`full`), through every lens or one focused lens: quality, security, performance, or tests. Findings get durable IDs, a severity from P0 to P3, and a status; an open or fixed P0 or P1 blocks the merge at `ship`. Writes nothing but the ledger - never edits source, installs, or commits. Use when the user runs `review`, asks for a code review, security review, performance check, or test-quality pass, or before closing out an item."
 ---
 
 # review - audit the code, and record what you find

@@ -31,6 +31,8 @@ Usage:
               gets its own loop and its own state, so parallel sessions cannot
               collide. Omit for a single-session project - the default, and the
               right answer for most work.
+              Parts are top-level directories here. A nested layout
+              (apps/web) is seeded a part at a time - docs/multi-part.md.
   --no-git    Skip git init
   --help      This
 
@@ -93,6 +95,54 @@ if [ -e "$TARGET" ]; then
   echo "Already exists: $TARGET" >&2
   echo "To add the workflow to an existing project, use install.sh instead." >&2
   exit 1
+fi
+
+# --parts is parsed and checked BEFORE anything is created. This block used to
+# sit beside the seeding, seventy lines further down, where its own comment
+# claimed "nothing is created before a bad name is reported" - and the target
+# directory and its .gitignore had been written long before it ran. So
+# `--parts 'apps/web,api'` left a half-made project behind, and the retry with
+# the name corrected hit "Already exists: ... use install.sh instead", which
+# points at the wrong tool for what is really a typo. A refusal must leave
+# nothing half-made - the same rule lib/seed-part.sh states for its own guard.
+parts_made=""
+clean_parts=()
+if [ -n "$PARTS" ]; then
+  IFS=',' read -ra PART_LIST <<< "$PARTS"
+  for part in "${PART_LIST[@]}"; do
+    part="$(echo "$part" | tr -d '[:space:]')"
+    [ -n "$part" ] || continue
+    # Checked here for a friendlier message, and again in lib/seed-part.sh so no
+    # caller can be the only guard. This one was missing while
+    # convert-to-parts.sh had it - a part name with a slash wrote a directory
+    # outside the product root and exited 0.
+    case "$part" in
+      .|..|-*|/*|*..*|*\\*)
+        echo "Not a usable part name: '$part'" >&2
+        echo "A part is a directory under the product root: not '.' or '..'," >&2
+        echo "not absolute, no backslash, and it may not start with '-'." >&2
+        exit 1 ;;
+      */*)
+        # A nested part is a real shape - lib/seed-part.sh takes one, and
+        # `apps/web` is what every JavaScript workspace looks like. This script
+        # is what cannot: it creates every part in one pass from a list written
+        # before `layout` has decided anything, and convert-to-parts.sh keys
+        # what it moves on a top-level directory name. So the limit is real.
+        # What was wrong was leaving it unsaid while the same shape is
+        # documented as supported three files away - the refusal said "not a
+        # path" and named no route that is one.
+        echo "Not a usable part name here: '$part'" >&2
+        echo "new-project.sh creates parts as top-level directories." >&2
+        echo "A nested layout is seeded a part at a time with" >&2
+        echo "lib/seed-part.sh, which does take 'apps/web' - see" >&2
+        echo "docs/multi-part.md, 'Or adopt a repository that was already" >&2
+        echo "multi-part'." >&2
+        exit 1 ;;
+    esac
+    clean_parts+=("$part")
+    parts_made="$parts_made $part"
+  done
+  [ "${#clean_parts[@]}" -gt 0 ] || { echo "--parts listed no usable names." >&2; exit 1; }
 fi
 
 mkdir -p "$TARGET"
@@ -173,30 +223,9 @@ else
   # Both steps are shared with convert-to-parts.sh, so a converted project and a
   # created one are the same shape. Two callers building parts slightly
   # differently is precisely the kind of seam that breaks here.
-  parts_made=""
-  IFS=',' read -ra PART_LIST <<< "$PARTS"
-  clean_parts=()
-  for part in "${PART_LIST[@]}"; do
-    part="$(echo "$part" | tr -d '[:space:]')"
-    [ -n "$part" ] || continue
-    # Checked here so nothing is created before a bad name is reported, and
-    # again in lib/seed-part.sh so no caller can be the only guard. This one
-    # was missing while convert-to-parts.sh had it - a part name with a slash
-    # wrote a directory outside the product root and exited 0.
-    case "$part" in
-      .|..|-*|*/*|*\\*)
-        echo "Not a usable part name: '$part'" >&2
-        echo "A part is a single directory name, not a path." >&2
-        exit 1 ;;
-    esac
-    clean_parts+=("$part")
-    parts_made="$parts_made $part"
-  done
-  [ "${#clean_parts[@]}" -gt 0 ] || { echo "--parts listed no usable names." >&2; exit 1; }
-
   "$HERE/lib/seed-product-root.sh" "$TARGET" "${clean_parts[@]}"
   for part in "${clean_parts[@]}"; do
-    "$HERE/lib/seed-part.sh" "$TARGET" "$part"
+    "$HERE/lib/seed-part.sh" "$TARGET" "$part" --quiet
   done
 fi
 
@@ -249,12 +278,13 @@ Created $TARGET
   contracts/                    the boundary between parts
 
 The $skills skills are installed here at the root as well, because 'orchestrate',
-'ideate', 'stack' and 'architect' run for the product rather than for one part.
+'ideate', 'architect', 'stack' and 'layout' run for the product rather than for
+one part.
 Open this directory for those; open a part's directory to build in it.
 
-Do the planning together and single-threaded first - idea, stack, architect, and
-the contract. Only move parts into parallel work once the board says the contract
-is frozen.
+Do the planning together and single-threaded first - the idea, the architecture,
+the stack, the layout, and the contract. Only move parts into parallel work once
+the board says the contract is frozen.
 
 Next:
   cd $NAME
@@ -272,8 +302,9 @@ Created $TARGET
   .gitignore   $([ "$DO_GIT" -eq 1 ] && echo "written before git init, so the first commit is clean" || echo "written, ready for whenever this becomes a repository")
 $([ "$DO_GIT" -eq 1 ] && echo "  git          initialised on 'main', with that first commit already made")
 
-There is no source directory yet - that is deliberate. The 'scaffold' skill
-creates it once 'stack' has decided what this project is.
+There is no source directory yet - that is deliberate. 'architect' decides the
+shape, 'stack' decides what it is built with, 'layout' decides where the files
+go, and only then does 'scaffold' create it.
 
 Next:
   cd $NAME

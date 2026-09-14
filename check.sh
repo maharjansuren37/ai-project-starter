@@ -186,7 +186,11 @@ fi
 #
 #    The exempt list is the entry points and the read-only reporters: they work
 #    in any project state by design. Anything else must carry the heading.
-exempt_preconditions="ideate setup progress preflight debug docs prepare"
+# `ideate` came off this list when it gained a --rescope mode. It was exempt as a
+# greenfield entry point - "works in any project state by design" - and that
+# stopped being true the moment it could run against a plan with built work
+# behind it. An exemption is a claim about the skill, not a permanent property.
+exempt_preconditions="setup progress preflight debug docs prepare"
 
 # An exemption naming a skill that does not exist is dead config, and it hides
 # the thing it was meant to exempt: this list still said `idea` after the rename
@@ -290,7 +294,7 @@ fi
 #    a part at all. `host` reads it to decide whether to spend money.
 #
 #    Every file is valid and every string is right; only the runtime directory is
-#    wrong, which is why status.md recorded this as unlintable. It is lintable
+#    wrong, which is why this class was long recorded as unlintable. It is lintable
 #    once the product-level files are *declared* - the same move that made rules
 #    9 and 12 possible. template/AGENTS.md's multi-part marker is the list.
 #
@@ -311,6 +315,74 @@ else
   done <<< "$product_files"
 fi
 
+# 14 - a skill that writes a foundational decision says what happens when that
+#    decision already exists.
+#
+#    `ideate` assumed a fresh project: run against a plan with shipped items it
+#    would propose a whole new build plan, and approving one erases the `- [x]`
+#    marks that are the entire resume mechanism. It then handed off to `stack`,
+#    which refuses a project that has code. A dead end that destroyed state on
+#    the way in, and every file involved was individually valid.
+#
+#    The same shape was in three more: `architect` never said that re-deciding a
+#    layout after `scaffold` moves every file - the pack knew, and said it in
+#    `autopilot` instead. `prototype` never said a second `design.md` can end up
+#    describing a look the code does not have, which makes `review` measure
+#    against a bar nobody built to. `stack` sent two different situations to the
+#    same wrong answer.
+#
+#    These four are the skills whose output a project commits to and may later
+#    need to change. Read-only reporters and per-item skills are not on the list:
+#    re-running `review` or `progress` costs nothing. **The list is the rule** -
+#    a fifth decision-writing skill has to be added here deliberately, which is
+#    the point at which someone asks the question this rule exists to force.
+decision_skills="ideate stack architect layout prototype"
+
+for n in $decision_skills; do
+  [ -f "$HERE/skills/$n.md" ] \
+    || fail "check.sh: decision_skills names \`$n\`, which is not a skill - a stale entry after a rename"
+done
+
+for n in $decision_skills; do
+  f="$HERE/skills/$n.md"
+  [ -f "$f" ] || continue
+  # The claim must live in the preconditions, where a skill states what it needs
+  # before acting - not buried in a later step that only runs once it has begun.
+  pre=$(sed -n '/^## Before you start/,/^## [^B]/p' "$f")
+  [ -n "$pre" ] || { fail "skills/$n.md: on decision_skills but has no '## Before you start'"; continue; }
+  printf '%s' "$pre" | grep -qiE 'already (exists|filled|decided|has|been)|already have' \
+    || fail "skills/$n.md: writes a foundational decision but its preconditions never say what happens when that decision already exists - see rule 14 in check.sh"
+done
+
+# 15 - a mode a skill declares in its `## Input` table is named in its
+#    description.
+#
+#    The description is what an agent matches a request against, so a mode
+#    missing from it is a capability only someone who already knows about it can
+#    reach. `docs --check` was that: its own Input row, its own section, and a
+#    question the skill itself says nothing else in this workflow asks - audit
+#    what is written against what is true - invisible to every agent choosing a
+#    skill. `review full` was the same, one step milder: the prose said "the
+#    whole project" without ever naming the argument.
+#
+#    No declared list here - the Input tables ARE the declaration, which is why
+#    this rule can be strict. A mode worth a table row is worth six words in the
+#    description.
+for f in "$HERE"/skills/*.md; do
+  name=$(basename "$f" .md)
+  grep -q '^## Input' "$f" || continue
+  desc=$(sed -n '/^description:/,/^---$/p' "$f")
+  # `|| true`: set -euo pipefail is on, and five skills have an Input table with
+  # no backticked argument rows (they describe inputs in prose). Without it grep's
+  # empty result aborts the whole script - silently, exit 1 and not one message,
+  # which looks exactly like a linter that found nothing to say.
+  args=$(sed -n '/^## Input/,/^## [^I]/p' "$f" | grep -oE '^\| `[^`]+`' | sed 's/^| //; s/`//g' | sort -u || true)
+  for a in $args; do
+    printf '%s' "$desc" | grep -qF -- "$a" \
+      || fail "skills/$name.md: declares mode '$a' in its Input table but never names it in the description - an agent matching on the description cannot reach it"
+  done
+done
+
 if [ "$errors" -gt 0 ]; then
   echo
   echo "$errors error(s) across $skills skill(s)."
@@ -320,4 +392,6 @@ fi
 echo "OK - $skills skills, frontmatter valid, no tool-specific references, steps in order,"
 echo "     every script referenced, every board field written, every skill states"
 echo "     its preconditions, frontmatter within host limits, every state file a writer,"
-echo "     every product-root file named as one"
+echo "     every product-root file named as one, every decision skill says what"
+echo "     happens when its decision already exists, every declared mode named"
+echo "     in its description"

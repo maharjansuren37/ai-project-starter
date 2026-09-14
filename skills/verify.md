@@ -1,6 +1,6 @@
 ---
 name: verify
-description: "Prove the current work actually does what its spec says, by running the real app and observing behavior against the done-when criteria in blueprint/context/current-work.md. Drives the app - browser, CLI, or server - captures evidence, and reports pass, fail, or could-not-verify per criterion. With --manual, writes a human walkthrough instead: what to start, where to go, what to click, what to expect, and what would count as wrong. Read-only either way: it observes and never edits source or commits. Use when the user runs `verify`, asks to confirm something works, wants proof before shipping, or asks how to test the change by hand."
+description: "Prove the current work actually does what its spec says, by running the real app and observing behavior against the done-when criteria in blueprint/context/current-work.md. Drives the app - browser, CLI, or server - captures evidence, and reports pass, fail, or could-not-verify per criterion. With --manual, writes a human walkthrough instead: what to start, where to go, what to click, what to expect, and what would count as wrong. With --all, re-proves the archived done-whens of every feature already shipped, which is the only check in this workflow that would catch a new item breaking an old one by observation rather than by test. Read-only either way: it observes and never edits source or commits. Use when the user runs `verify`, asks to confirm something works, wants proof before shipping, or asks how to test the change by hand."
 ---
 
 # verify - prove it against the running app
@@ -45,6 +45,7 @@ actually happens.
 | *(none)* | Prove every done-when in the current spec |
 | a step, flow, or URL | Prove just that |
 | `--manual` | Write a walkthrough for a person to follow, and run nothing |
+| `--all` | Re-prove every **already shipped** feature from its archive, not the current spec |
 
 `--manual` produces the guide someone uses to review the work themselves - before
 approving a merge, or when they want to see it with their own eyes. It reads the
@@ -61,6 +62,35 @@ If there is no current spec, check `blueprint/history/features` and
 `blueprint/history/fixes` for the most recently archived work and say that is what
 you are verifying. If there is nothing at all, ask what to verify rather than
 guessing.
+
+**With `--all`, the source is every archive**, not the most recent one. Read each
+file under `blueprint/history/features` and `blueprint/history/fixes`, pull the
+done-when criteria each recorded, and build one checklist across all of them,
+grouped by item and in ship order.
+
+**Those directories each contain a `README.md` that is not an archive** - the
+template ships one in all three, explaining the naming convention. **Skip it.**
+An archive is named `NN-title.md` for a feature and `title.md` for a fix; the
+directory's own README describes the directory. Reading it as an archive yields
+an item with no done-whens, which reports as either a silent extra or a
+could-not-verify against a feature that does not exist - and both make the
+checklist wrong in a way nobody would think to question. **These claims were proved once, when the item
+shipped, and nothing in this workflow has looked at them since** - which is the
+whole reason for this mode.
+
+Three things make an archived claim different from a current one, and each needs
+saying rather than quietly resolving:
+
+- **A claim about a feature that has since been cut** is not a regression. If the
+  item no longer exists in `blueprint/build-plan.md` - after an
+  `ideate --rescope`, say - report it as **no longer applicable** and name the
+  item, rather than failing it or silently skipping it.
+- **A claim that has been superseded** by later work. Item 2 said the list is
+  newest-first; item 6 made the order configurable. The old claim is not wrong,
+  it is stale. Say so and say which item changed it.
+- **A claim that was never observable** - "the code is clean", anything without a
+  concrete behavior. Those were weak done-whens when written; report them as
+  **could not verify** and say why, which is more useful than a pass.
 
 ## Step 2 - get the app running
 
@@ -106,9 +136,32 @@ Match the project type:
 working screen is wider there than anywhere else - layout, permissions, platform
 differences, and device size all break things a compiler never sees.
 
-Use a browser automation tool only if the project already has one installed or
-declared. Do not add one from this skill; if none is available, use another
-real-browser path and say which you used.
+**Use the browser automation tool the stack settled on**, if there is one.
+`stack` decides it for any platform that renders and `scaffold` installs it, so
+by the time this skill runs it is either present or was declined on the record.
+Drive the real routes with it, and **look at what it captured** - a screenshot
+that was taken and never opened proves nothing that the HTML did not.
+
+**Do not add one from this skill.** It is a dependency and a few hundred
+megabytes of browser binaries; this skill is read-only and installing mid-
+verification is the wrong moment. If a project that renders has no harness, say
+so, name `stack` as where that gets decided, and carry on with what can be
+observed.
+
+**Where there is no harness, the fallback is a person - and a person is not
+always there.** That is the whole shape of this problem:
+
+- **Someone is available** - `--manual` writes them a walkthrough and their
+  eyes are the evidence. Better than a harness for judgement: whether it looks
+  right, whether it is confusing. Worse for repetition: nobody re-checks item 1
+  by hand when item 9 lands.
+- **Nobody is available** - without a harness every visual claim is
+  **could not verify**, which is honest and useless every time it happens. This
+  is the case the harness exists for, and the reason `stack` asks.
+
+Never let a deferred manual check quietly become a pass. **"I have not seen
+this" is the sentence**, and it belongs in the report whether it is waiting on a
+person who has not looked yet or on a harness nobody installed.
 
 ## Step 3 - exercise each claim
 
@@ -139,6 +192,32 @@ Then the bottom line: are all the done-whens proven, or not yet.
   known cause; it is not where an unknown one gets found.
   Do not fix it here.
 - **Anything unverifiable** - say so plainly and why. Never report it as a pass.
+
+**With `--all`, the bottom line is a different sentence.** Nothing here is ready
+for `review` or `ship` - no item is in flight. Report instead:
+
+- **how many shipped items were re-proved, and how many claims each contributed.**
+  A count of items alone hides that one item had eleven done-whens and another had
+  one.
+- **every regression, by the item that recorded the claim and, where you can tell,
+  the item that broke it.** A regression's value is mostly in the second half:
+  "item 2's list order is wrong" is a bug report, "item 6 changed the ordering and
+  item 2 still asserts newest-first" is a fix.
+- **what is no longer applicable, superseded, or was never observable** - counted
+  separately, never folded into passes. A run reporting "18 of 20 pass" when four
+  of those were unobservable claims nobody could have checked is worse than one
+  reporting 14 passes and 4 unknowns.
+
+**A regression does not go back to `build` the way a current-spec failure does.**
+There is no spec for it. Raise it in `blueprint/context/findings.md` with a
+severity, the same as `review` does, and let `spec` pick it up as a fix - that is
+the route a defect in shipped code already has, and this is one.
+
+**Say what this run cost.** Re-proving every shipped feature by observation is
+the most expensive check in this workflow and it grows with the project. It earns
+that before a release, after a dependency upgrade, or when something feels off -
+not every item. Saying the cost is what stops it being run out of habit and then
+skipped when it matters.
 
 ## Step 5 - the manual walkthrough (`--manual` only)
 
